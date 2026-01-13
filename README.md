@@ -87,10 +87,20 @@ The C# Windows app embeds the estimator HTML inside the executable and runs it i
 Build a portable single-file `.exe` on Windows:
 
 ```powershell
-dotnet publish TowEstimator.csproj -c Release -r win-x64 -p:PublishSingleFile=true --self-contained false
+dotnet publish TowEstimator.csproj -c Release -r win-x64
 ```
 
 The portable `.exe` will be under `bin/Release/net8.0-windows/win-x64/publish/`.
+
+You can also run the release scripts:
+
+```powershell
+scripts/publish-release.ps1
+```
+
+```bash
+scripts/publish-release.sh
+```
 
 > Note: WebView2 Runtime must be available on the target machine (it ships with Windows 11 and most Windows 10 builds).
 
