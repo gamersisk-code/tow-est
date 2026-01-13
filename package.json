@@ -1,0 +1,32 @@
+{
+  "name": "tow-estimator",
+  "version": "1.0.0",
+  "description": "Southern Pride Towing price estimator desktop app",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win --x64"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.southernpride.towestimator",
+    "productName": "Southern Pride Towing Estimator",
+    "files": [
+      "main.js",
+      "tow-estimator.html"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    }
+  }
+}
