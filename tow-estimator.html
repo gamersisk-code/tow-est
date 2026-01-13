@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Southern Pride Towing — Price Estimator</title>
+  <meta name="theme-color" content="#0b1b2b" />
+  <style>
+    :root { color-scheme: light; }
+    body{
+      margin:0;
+      padding:24px;
+      font-family:system-ui,Segoe UI,Roboto,Arial;
+      background:radial-gradient(circle at top, #f8fafc 0%, #eef2f7 45%, #e6edf7 100%);
+      color:#0f172a;
+    }
+    .wrap{display:flex;justify-content:center}
+  </style>
+</head>
+<body>
+<div class="wrap">
+<!-- ================= Estimator App ================= -->
+<div id="tow-estimator" style="width:100%;max-width:980px;margin:0 auto;line-height:1.4;color:#0f172a;padding:8px">
+  <style>
+    #tow-estimator * { box-sizing: border-box; }
+    #tow-estimator .hero{
+      display:flex;
+      justify-content:space-between;
+      gap:18px;
+      align-items:flex-end;
+      padding:18px 20px;
+      border-radius:18px;
+      background:linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0b1b2b 100%);
+      color:#f8fafc;
+      box-shadow:0 18px 40px rgba(15, 23, 42, 0.25);
+      margin-bottom:18px;
+    }
+    #tow-estimator .hero h1{margin:0;font-size:clamp(20px,4.2vw,28px)}
+    #tow-estimator .hero p{margin:6px 0 0;color:#cbd5f5;font-size:clamp(12px,2.8vw,14px)}
+    #tow-estimator .hero-tag{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      background:rgba(148, 163, 184, 0.2);
+      border:1px solid rgba(148, 163, 184, 0.35);
+    }
+    #tow-estimator .hero-card{
+      min-width:220px;
+      background:rgba(255, 255, 255, 0.08);
+      border:1px solid rgba(148, 163, 184, 0.4);
+      border-radius:14px;
+      padding:12px 14px;
+      font-size:12px;
+      color:#e2e8f0;
+    }
+    #tow-estimator .hero-card strong{display:block;font-size:14px;color:#fff;margin-top:4px}
+    #tow-estimator .panel{
+      border:1px solid #e2e8f0;
+      border-radius:18px;
+      background:#fff;
+      padding:18px;
+      box-shadow:0 10px 24px rgba(15, 23, 42, 0.08);
+    }
+    #tow-estimator .panel + .panel{margin-top:18px}
+    #tow-estimator .panel-title{
+      font-weight:700;
+      font-size:clamp(15px,3.4vw,18px);
+      margin:0 0 4px;
+    }
+    #tow-estimator .panel-subtitle{color:#64748b;font-size:12px;margin:0 0 12px}
+    #tow-estimator label{font-size:12px;color:#475569;display:block;margin:6px 0}
+    #tow-estimator input[type="text"],
+    #tow-estimator input[type="number"],
+    #tow-estimator input[type="date"]{
+      width:100%;
+      padding:12px 14px;
+      border:1px solid #cbd5f5;
+      border-radius:12px;
+      font-size:14px;
+      background:#f8fafc;
+    }
+    #tow-estimator input[type="text"]:focus,
+    #tow-estimator input[type="number"]:focus,
+    #tow-estimator input[type="date"]:focus{
+      outline:2px solid rgba(59, 130, 246, 0.35);
+      border-color:#60a5fa;
+      background:#fff;
+    }
+    #tow-estimator .grid{
+      display:grid;
+      grid-template-columns:1.2fr 0.8fr;
+      gap:18px;
+    }
+    #tow-estimator .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    #tow-estimator .row.three{grid-template-columns:1fr 1fr 1fr}
+    @media (max-width:880px){ #tow-estimator .grid{grid-template-columns:1fr} }
+    @media (max-width:640px){ #tow-estimator .row{grid-template-columns:1fr} #tow-estimator .row.three{grid-template-columns:1fr} }
+    #tow-estimator .btn{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      justify-content:center;
+      padding:12px 16px;
+      border:0;
+      border-radius:12px;
+      background:#0f172a;
+      color:#fff;
+      font-size:14px;
+      cursor:pointer;
+      width:100%;
+    }
+    #tow-estimator .btn.secondary{background:#f1f5f9;color:#0f172a;border:1px solid #dbeafe}
+    #tow-estimator .btn-wrap{display:grid;grid-template-columns:1fr;gap:10px}
+    #tow-estimator .result{
+      margin-top:12px;
+      padding:14px;
+      border-radius:14px;
+      white-space:pre-line;
+      background:linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+      border:1px solid #dbeafe;
+      font-size:14px;
+    }
+    #tow-estimator .muted{color:#64748b;font-size:12px;margin-top:8px}
+    #tow-estimator .section-title{
+      font-weight:700;
+      font-size:13px;
+      text-transform:uppercase;
+      letter-spacing:0.08em;
+      color:#64748b;
+      margin:16px 0 6px;
+    }
+    #tow-estimator .summary-card{
+      border-radius:16px;
+      border:1px solid #e2e8f0;
+      padding:16px;
+      background:#f8fafc;
+      display:grid;
+      gap:12px;
+    }
+    #tow-estimator .summary-badge{
+      display:inline-flex;
+      padding:6px 10px;
+      border-radius:999px;
+      background:#0f172a;
+      color:#fff;
+      font-size:11px;
+      letter-spacing:0.08em;
+      text-transform:uppercase;
+      width:max-content;
+    }
+    #tow-estimator .log-wrap{margin-top:18px;border:1px solid #e2e8f0;border-radius:18px;padding:16px;background:#fff}
+    #tow-estimator .log-list{margin-top:10px;display:grid;gap:12px}
+    #tow-estimator .log-item{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#f8fafc}
+    #tow-estimator .log-item-header{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px;color:#64748b}
+    #tow-estimator .log-item-body{margin-top:6px;font-size:13px;white-space:pre-line}
+    #tow-estimator .log-empty{font-size:13px;color:#64748b}
+
+    /* Autocomplete */
+    #tow-estimator .ac-wrap{position:relative;margin:6px 0 14px}
+    #tow-estimator .ac-list{
+      position:absolute;left:0;right:0;top:100%;z-index:9999;background:#fff;border:1px solid #dbeafe;border-top:0;
+      border-radius:0 0 12px 12px;max-height:240px;overflow:auto;display:none
+    }
+    #tow-estimator .ac-item{padding:10px 12px;border-top:1px solid #eef2ff;cursor:pointer;font-size:14px}
+    #tow-estimator .ac-item:hover{background:#eff6ff}
+
+    /* Print */
+    @media print{ #tow-estimator .no-print{display:none !important} #tow-estimator .invoice{border:0} }
+  </style>
+
+  <div class="hero no-print">
+    <div>
+      <div class="hero-tag">Auto-save enabled</div>
+      <h1>Southern Pride Towing</h1>
+      <p>Fast estimates, clean invoices, and a searchable quote history.</p>
+    </div>
+    <div class="hero-card">
+      Default yard
+      <strong id="heroYard">184 Nicholson Rd, Lincolnton, NC</strong>
+      Update below if needed
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-title">Route & Pricing</div>
+      <div class="panel-subtitle no-print">Pick from suggestions or type full addresses. Your yard & rates save in this browser.</div>
+
+      <div class="section-title">Route details</div>
+      <label>Deadhead start (your yard/base)</label>
+      <div class="ac-wrap">
+        <input id="deadheadInput" type="text" placeholder="Your yard address" autocomplete="off">
+        <div id="deadheadList" class="ac-list"></div>
+      </div>
+
+      <label>Pickup address</label>
+      <div class="ac-wrap">
+        <input id="pickupInput" type="text" placeholder="Pickup address" autocomplete="off">
+        <div id="pickupList" class="ac-list"></div>
+      </div>
+
+      <label>Drop-off address</label>
+      <div class="ac-wrap">
+        <input id="dropoffInput" type="text" placeholder="Drop-off address" autocomplete="off">
+        <div id="dropoffList" class="ac-list"></div>
+      </div>
+
+      <div class="section-title no-print">Pricing controls</div>
+      <div class="row no-print" style="margin:8px 0">
+        <div>
+          <label>Hook/Base Fee ($)</label>
+          <input id="baseFee" type="number" step="1">
+        </div>
+        <div>
+          <label>Rate per Mile ($)</label>
+          <input id="rate" type="number" step="0.01">
+        </div>
+      </div>
+      <div class="row three no-print" style="margin:8px 0 12px">
+        <div>
+          <label>Discount %</label>
+          <input id="discountPercent" type="number" min="0" max="100" step="0.1" placeholder="0">
+        </div>
+        <div>
+          <label>Discount $</label>
+          <input id="discountAmount" type="number" min="0" step="0.01" placeholder="0.00">
+        </div>
+        <div>
+          <label>Discount reason</label>
+          <input id="discountReason" type="text" placeholder="Optional">
+        </div>
+      </div>
+
+      <div class="btn-wrap no-print" style="margin:8px 0 0">
+        <button id="calcBtn" class="btn">Get Estimate</button>
+        <button id="printBtn" class="btn secondary">Print Estimate</button>
+      </div>
+      <div class="muted no-print">Powered by Geoapify (free tier). No external libraries.</div>
+    </div>
+
+    <div class="panel">
+      <div class="summary-card">
+        <div class="summary-badge">Estimate Summary</div>
+        <div id="result" class="result" aria-live="polite"></div>
+        <div class="muted">Quotes save automatically to your log for future lookup.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="log-wrap no-print">
+    <div class="panel-title" style="margin-top:0">Quote Log</div>
+    <div class="panel-subtitle">Filter by date or search to quickly revisit saved quotes.</div>
+    <div class="row" style="margin:8px 0 0">
+      <div>
+        <label>Filter by date</label>
+        <input id="logDate" type="date">
+      </div>
+      <div>
+        <label>Search</label>
+        <input id="logSearch" type="text" placeholder="Address, notes, or amount">
+      </div>
+    </div>
+    <div class="btn-wrap" style="margin:8px 0">
+      <button id="clearLogFilters" class="btn secondary">Clear Filters</button>
+    </div>
+    <div id="logList" class="log-list"></div>
+    <div id="logEmpty" class="log-empty">No quotes yet. Run an estimate to save it here.</div>
+  </div>
+
+  <!-- Printable invoice -->
+  <div id="invoiceRoot" class="invoice" style="display:none;margin-top:16px">
+    <div style="border:1px solid #e5e7eb;border-radius:14px;padding:16px;background:#fff">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-weight:700;font-size:20px">Southern Pride Towing</div>
+          <div style="font-size:12px;color:#6b7280">Estimate</div>
+        </div>
+        <div style="text-align:right">
+          <div id="invDate" style="font-size:12px;color:#6b7280"></div>
+          <div id="invId" style="font-size:12px;color:#6b7280"></div>
+        </div>
+      </div>
+      <hr style="border:none;border-top:1px solid #f3f4f6;margin:12px 0">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div style="font-weight:600;margin-bottom:6px">Job Details</div>
+          <div id="invPickup"></div>
+          <div id="invDrop"></div>
+          <div id="invDeadhead"></div>
+        </div>
+        <div>
+          <div style="font-weight:600;margin-bottom:6px">Mileage</div>
+          <div id="invMiles"></div>
+        </div>
+      </div>
+      <hr style="border:none;border-top:1px solid #f3f4f6;margin:12px 0">
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+        <div>Hook/Base Fee</div><div id="invBase"></div>
+        <div>Rate per Mile</div><div id="invRate"></div>
+        <div style="font-weight:700">Estimated Total</div><div id="invTotal" style="font-weight:700"></div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:#6b7280">
+        * Estimate based on routing distance. Final price may vary with wait time, recovery, winch, after-hours, tolls, or special conditions.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const GEOAPIFY_KEY = "7305e94ac22249c1b3224802b9c1409d";
+    const COUNTRY_FILTER = "us";
+    const DEFAULTS = {
+      yardAddress: "184 Nicholson Rd, Lincolnton, NC 28092",
+      baseFee: 30,
+      rate: 3.50
+    };
+
+    const $ = sel => document.querySelector(sel);
+    const acState = { deadhead: null, pickup: null, dropoff: null };
+    function debounce(fn, d=250){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), d); }; }
+    const miles = m => (m / 1609.34);
+
+    const LS_KEY = "spt_estimator_prefs_v6";
+    const LOG_KEY = "spt_estimator_logs_v1";
+    const MAX_LOGS = 200;
+    function loadPrefs(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)) || {...DEFAULTS}; }catch{ return {...DEFAULTS}; } }
+    function savePrefs(p){ localStorage.setItem(LS_KEY, JSON.stringify(p)); }
+    function loadLogs(){ try{ return JSON.parse(localStorage.getItem(LOG_KEY)) || []; }catch{ return []; } }
+    function saveLogs(logs){ localStorage.setItem(LOG_KEY, JSON.stringify(logs.slice(0, MAX_LOGS))); }
+
+    const prefs = loadPrefs();
+    $("#deadheadInput").value = prefs.yardAddress;
+    const heroYard = $("#heroYard");
+    if (heroYard) heroYard.textContent = prefs.yardAddress;
+    $("#baseFee").value = prefs.baseFee;
+    $("#rate").value = prefs.rate;
+    $("#discountPercent").value = prefs.discountPercent ?? "";
+    $("#discountAmount").value = prefs.discountAmount ?? "";
+    $("#discountReason").value = prefs.discountReason ?? "";
+
+    $("#deadheadInput").addEventListener("change", ()=> {
+      prefs.yardAddress = $("#deadheadInput").value;
+      if (heroYard) heroYard.textContent = prefs.yardAddress;
+      savePrefs(prefs);
+      acState.deadhead = null;
+    });
+    $("#baseFee").addEventListener("change", ()=> { prefs.baseFee = parseFloat($("#baseFee").value || "0"); savePrefs(prefs); });
+    $("#rate").addEventListener("change", ()=> { prefs.rate = parseFloat($("#rate").value || "0"); savePrefs(prefs); });
+    $("#discountPercent").addEventListener("change", ()=> { prefs.discountPercent = parseFloat($("#discountPercent").value || "0"); savePrefs(prefs); });
+    $("#discountAmount").addEventListener("change", ()=> { prefs.discountAmount = parseFloat($("#discountAmount").value || "0"); savePrefs(prefs); });
+    $("#discountReason").addEventListener("change", ()=> { prefs.discountReason = $("#discountReason").value.trim(); savePrefs(prefs); });
+
+    async function fetchAutocomplete(text){
+      if(!text || !text.trim()) return [];
+      const url = new URL("https://api.geoapify.com/v1/geocode/autocomplete");
+      url.searchParams.set("text", text);
+      url.searchParams.set("apiKey", GEOAPIFY_KEY);
+      if (COUNTRY_FILTER) url.searchParams.set("filter", `countrycode:${COUNTRY_FILTER}`);
+      url.searchParams.set("limit","8");
+      const r = await fetch(url);
+      if(!r.ok) return [];
+      const data = await r.json();
+      return (data.features || []).map(f => ({ formatted: f.properties.formatted, lat: f.properties.lat, lon: f.properties.lon }));
+    }
+
+    async function geocodeFirst(text){
+      if(!text || !text.trim()) return null;
+      const url = new URL("https://api.geoapify.com/v1/geocode/search");
+      url.searchParams.set("text", text);
+      url.searchParams.set("apiKey", GEOAPIFY_KEY);
+      if (COUNTRY_FILTER) url.searchParams.set("filter", `countrycode:${COUNTRY_FILTER}`);
+      url.searchParams.set("limit","1");
+      const r = await fetch(url);
+      if(!r.ok) return null;
+      const data = await r.json();
+      const f = (data.features||[])[0];
+      if(!f) return null;
+      return { formatted: f.properties.formatted, lat: f.properties.lat, lon: f.properties.lon };
+    }
+
+    function attachAutocomplete(inputEl, listEl, key){
+      const render = (items)=>{
+        listEl.innerHTML = "";
+        if(!items.length){ listEl.style.display="none"; return; }
+        items.forEach(item=>{
+          const div = document.createElement("div");
+          div.className = "ac-item";
+          div.textContent = item.formatted;
+          div.onclick = ()=>{
+            inputEl.value = item.formatted;
+            acState[key] = item;
+            if(key === "deadhead"){ prefs.yardAddress = item.formatted; savePrefs(prefs); }
+            listEl.style.display="none";
+          };
+          listEl.appendChild(div);
+        });
+        listEl.style.display="block";
+      };
+
+      const onType = debounce(async ()=>{
+        acState[key] = null;
+        const items = await fetchAutocomplete(inputEl.value);
+        render(items);
+      }, 220);
+
+      inputEl.addEventListener("input", onType);
+      inputEl.addEventListener("focus", onType);
+      inputEl.addEventListener("blur", ()=> setTimeout(()=> listEl.style.display="none", 150));
+    }
+
+    attachAutocomplete($("#deadheadInput"), $("#deadheadList"), "deadhead");
+    attachAutocomplete($("#pickupInput"),   $("#pickupList"),   "pickup");
+    attachAutocomplete($("#dropoffInput"),  $("#dropoffList"),  "dropoff");
+
+    function formatMoney(value){
+      return `$${value.toFixed(2)}`;
+    }
+
+    function renderLogs(){
+      const logs = loadLogs();
+      const dateFilter = $("#logDate").value;
+      const search = $("#logSearch").value.trim().toLowerCase();
+      const list = $("#logList");
+      list.innerHTML = "";
+      const filtered = logs.filter(entry => {
+        const matchesDate = !dateFilter || entry.date === dateFilter;
+        const haystack = `${entry.pickup} ${entry.dropoff} ${entry.deadhead} ${entry.notes || ""} ${entry.totalCost}`;
+        const matchesSearch = !search || haystack.toLowerCase().includes(search);
+        return matchesDate && matchesSearch;
+      });
+
+      if (!filtered.length) {
+        $("#logEmpty").style.display = "block";
+        return;
+      }
+      $("#logEmpty").style.display = "none";
+
+      filtered.forEach(entry => {
+        const item = document.createElement("div");
+        item.className = "log-item";
+        const header = document.createElement("div");
+        header.className = "log-item-header";
+        header.textContent = `${entry.whenLabel} • ${entry.totalMiles.toFixed(1)} mi`;
+        const body = document.createElement("div");
+        body.className = "log-item-body";
+        const discountLine = entry.discountTotal > 0
+          ? `Discount: -${formatMoney(entry.discountTotal)} (${entry.discountPercent}% + ${formatMoney(entry.discountAmount)})`
+          : "Discount: none";
+        const notesLine = entry.notes ? `Notes: ${entry.notes}` : "Notes: none";
+        body.textContent =
+          `From: ${entry.pickup}\nTo:   ${entry.dropoff}\nDeadhead: ${entry.deadhead}\n` +
+          `Total: ${formatMoney(entry.totalCost)} (Base ${formatMoney(entry.baseFee)} + Mileage ${formatMoney(entry.mileageCost)})\n` +
+          `${discountLine}\n${notesLine}`;
+        item.appendChild(header);
+        item.appendChild(body);
+        list.appendChild(item);
+      });
+    }
+
+    function addLog(entry){
+      const logs = loadLogs();
+      logs.unshift(entry);
+      saveLogs(logs);
+      renderLogs();
+    }
+
+    $("#logDate").addEventListener("change", renderLogs);
+    $("#logSearch").addEventListener("input", debounce(renderLogs, 200));
+    $("#clearLogFilters").addEventListener("click", () => {
+      $("#logDate").value = "";
+      $("#logSearch").value = "";
+      renderLogs();
+    });
+
+    async function ensurePoint(key, inputSel){
+      if (acState[key]) return acState[key];
+      const txt = $(inputSel).value;
+      const p = await geocodeFirst(txt);
+      if (p) acState[key] = p;
+      return p;
+    }
+
+    async function routeMiles(a,b){
+      const url = new URL("https://api.geoapify.com/v1/routing");
+      url.searchParams.set("waypoints", `${a.lat},${a.lon}|${b.lat},${b.lon}`); // lat,lon
+      url.searchParams.set("mode","drive");
+      url.searchParams.set("apiKey", GEOAPIFY_KEY);
+      const r = await fetch(url);
+      const txt = await r.text();
+      if(!r.ok) throw new Error(`routing ${r.status}: ${txt.slice(0,160)}`);
+      let data; try{ data = JSON.parse(txt); }catch{ throw new Error("routing: bad JSON"); }
+      const meters = data?.features?.[0]?.properties?.distance;
+      if (typeof meters !== "number") throw new Error("routing: no distance");
+      return miles(meters);
+    }
+
+    $("#calcBtn").addEventListener("click", async ()=>{
+      const result = $("#result");
+      result.textContent = "Calculating…";
+      const baseFee = parseFloat($("#baseFee").value || "0");
+      const rate    = parseFloat($("#rate").value || "0");
+      const discountPercent = Math.max(0, parseFloat($("#discountPercent").value || "0"));
+      const discountAmount = Math.max(0, parseFloat($("#discountAmount").value || "0"));
+      const discountReason = $("#discountReason").value.trim();
+
+      const dead = await ensurePoint("deadhead", "#deadheadInput");
+      const pick = await ensurePoint("pickup",   "#pickupInput");
+      const drop = await ensurePoint("dropoff",  "#dropoffInput");
+
+      if(!dead || !pick || !drop){ result.textContent = "Please provide valid addresses."; return; }
+
+      try{
+        const deadMi = await routeMiles(dead, pick);
+        const towMi  = await routeMiles(pick, drop);
+        const totalMi = deadMi + towMi;
+        const mileageCost = totalMi * rate;
+        const preDiscountTotal = baseFee + mileageCost;
+        const percentDiscount = preDiscountTotal * (discountPercent / 100);
+        const discountTotal = Math.min(preDiscountTotal, percentDiscount + discountAmount);
+        const totalCost = preDiscountTotal - discountTotal;
+
+        result.textContent =
+          `Deadhead: ${deadMi.toFixed(1)} mi\nTow: ${towMi.toFixed(1)} mi\nTotal miles: ${totalMi.toFixed(1)} mi\n\n` +
+          `Base fee: ${formatMoney(baseFee)}\nMileage: ${formatMoney(mileageCost)}\n` +
+          `Discounts: -${formatMoney(discountTotal)}\n\n` +
+          `Estimated price: ${formatMoney(totalCost)}\n\nFrom: ${pick.formatted}\nTo:   ${drop.formatted}`;
+
+        const when = new Date();
+        window.__SPT_LAST = { when, pickup: pick.formatted, drop: drop.formatted, deadhead: dead.formatted, deadMi, towMi, totalMi, baseFee, rate, totalCost, discountTotal, discountPercent, discountAmount, mileageCost, discountReason };
+        addLog({
+          id: when.getTime(),
+          whenISO: when.toISOString(),
+          whenLabel: when.toLocaleString(),
+          date: when.toISOString().slice(0, 10),
+          pickup: pick.formatted,
+          dropoff: drop.formatted,
+          deadhead: dead.formatted,
+          totalMiles: totalMi,
+          deadMi,
+          towMi,
+          baseFee,
+          rate,
+          mileageCost,
+          discountPercent,
+          discountAmount,
+          discountTotal,
+          totalCost,
+          notes: discountReason
+        });
+      }catch(e){
+        result.textContent = "Could not get routing distance. " + e.message;
+      }
+    });
+
+    $("#printBtn").addEventListener("click", ()=>{
+      const d = window.__SPT_LAST;
+      if(!d){ alert("Run an estimate first."); return; }
+
+      $("#invoiceRoot").style.display = "block";
+      $("#invDate").textContent = "Date: " + d.when.toLocaleString();
+      $("#invId").textContent   = "Ref: EST-" + Math.floor(d.when.getTime()/1000);
+      $("#invPickup").textContent   = "Pickup: " + d.pickup;
+      $("#invDrop").textContent     = "Drop-off: " + d.drop;
+      $("#invDeadhead").textContent = "Deadhead start: " + d.deadhead;
+      $("#invMiles").textContent =
+        `Deadhead ${d.deadMi.toFixed(1)} mi, Tow ${d.towMi.toFixed(1)} mi, Total ${d.totalMi.toFixed(1)} mi`;
+      $("#invBase").textContent = `$${d.baseFee.toFixed(2)}`;
+      $("#invRate").textContent = `$${d.rate.toFixed(2)}/mi`;
+      const discountLine = d.discountTotal > 0
+        ? `Discounts: -$${d.discountTotal.toFixed(2)} (${d.discountPercent}% + $${d.discountAmount.toFixed(2)})`
+        : "Discounts: none";
+      $("#invMiles").textContent += `\n${discountLine}`;
+      $("#invTotal").textContent = `$${d.totalCost.toFixed(2)}`;
+      window.print();
+      setTimeout(()=> { $("#invoiceRoot").style.display = "none"; }, 500);
+    });
+
+    renderLogs();
+  </script>
+</div>
+<!-- ================= End Estimator App ================= -->
+</div>
+</body>
+</html>
