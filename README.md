@@ -12,6 +12,12 @@ python3 -m http.server 8000
 
 Then visit <http://localhost:8000/tow-estimator.html>.
 
+Set your Geoapify API key before running the app so the key is not stored in the HTML:
+
+```bash
+export GEOAPIFY_KEY="your-api-key"
+```
+
 ## Build a Windows `.exe`
 
 1. Install dependencies:
@@ -91,6 +97,12 @@ dotnet publish TowEstimator.csproj -c Release -r win-x64
 ```
 
 The portable `.exe` will be under `bin/Release/net8.0-windows/win-x64/publish/`.
+
+Set the API key in the environment before launching the app:
+
+```powershell
+$env:GEOAPIFY_KEY="your-api-key"
+```
 
 You can also run the release scripts:
 

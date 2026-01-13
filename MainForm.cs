@@ -53,6 +53,8 @@ public sealed class MainForm : Form
         }
 
         using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
+        var html = reader.ReadToEnd();
+        var apiKey = Environment.GetEnvironmentVariable("GEOAPIFY_KEY") ?? string.Empty;
+        return html.Replace("__GEOAPIFY_KEY__", apiKey);
     }
 }
