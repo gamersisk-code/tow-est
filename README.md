@@ -102,6 +102,8 @@ scripts/publish-release.ps1
 scripts/publish-release.sh
 ```
 
+The C# app stores quote data in a local `app-data/` folder next to the `.exe`, so you can keep the executable and its data together (copy the folder to move everything).
+
 > Note: WebView2 Runtime must be available on the target machine (it ships with Windows 11 and most Windows 10 builds).
 
 ## Troubleshooting build errors

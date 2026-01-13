@@ -30,7 +30,10 @@ public sealed class MainForm : Form
 
     private async Task InitializeWebViewAsync()
     {
-        await _webView.EnsureCoreWebView2Async();
+        var userDataFolder = Path.Combine(AppContext.BaseDirectory, "app-data");
+        Directory.CreateDirectory(userDataFolder);
+        var environment = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, userDataFolder);
+        await _webView.EnsureCoreWebView2Async(environment);
         _webView.CoreWebView2.Settings.IsZoomControlEnabled = true;
         _webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
         _webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
