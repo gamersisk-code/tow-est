@@ -62,6 +62,16 @@ jpackage --type exe --name "Southern Pride Towing Estimator" \
   --add-modules javafx.controls,javafx.web
 ```
 
+You can also use the helper scripts:
+
+```bash
+scripts/build-exe.sh
+```
+
+```powershell
+scripts/build-exe.ps1
+```
+
 ## Troubleshooting build errors
 
 If `npm install` or `npm run dist` fails with registry access errors (for example `403 Forbidden`), ensure your environment has access to the public npm registry and any required corporate proxy settings are configured before retrying the install.
