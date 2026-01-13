@@ -80,6 +80,20 @@ scripts/build-exe.sh
 scripts/build-exe.ps1
 ```
 
+## C# standalone Windows `.exe`
+
+The C# Windows app embeds the estimator HTML inside the executable and runs it in WebView2 (no external `.html` file needed at runtime).
+
+Build a portable single-file `.exe` on Windows:
+
+```powershell
+dotnet publish TowEstimator.csproj -c Release -r win-x64 -p:PublishSingleFile=true --self-contained false
+```
+
+The portable `.exe` will be under `bin/Release/net8.0-windows/win-x64/publish/`.
+
+> Note: WebView2 Runtime must be available on the target machine (it ships with Windows 11 and most Windows 10 builds).
+
 ## Troubleshooting build errors
 
 If `npm install` or `npm run dist` fails with registry access errors (for example `403 Forbidden`), ensure your environment has access to the public npm registry and any required corporate proxy settings are configured before retrying the install.
