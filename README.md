@@ -104,6 +104,18 @@ scripts/publish-release.sh
 
 The C# app stores quote data in a local `app-data/` folder next to the `.exe`, so you can keep the executable and its data together (copy the folder to move everything).
 
+To create a portable folder with only what you need (`.exe` + empty `app-data/`), run:
+
+```powershell
+scripts/package-portable.ps1
+```
+
+```bash
+scripts/package-portable.sh
+```
+
+This creates `dist/portable/` with the executable and `app-data/` side-by-side.
+
 > Note: WebView2 Runtime must be available on the target machine (it ships with Windows 11 and most Windows 10 builds).
 
 ## Troubleshooting build errors
