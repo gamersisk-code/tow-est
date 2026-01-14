@@ -29,6 +29,9 @@ public sealed class MainForm : Form
     private readonly NumericUpDown _discountPercentInput = new();
     private readonly NumericUpDown _discountAmountInput = new();
     private readonly TextBox _discountReasonInput = new();
+    private readonly TextBox _customerNameInput = new();
+    private readonly TextBox _customerPhonePrimaryInput = new();
+    private readonly TextBox _customerPhoneSecondaryInput = new();
     private readonly TextBox _resultBox = new();
     private readonly ListView _logList = new();
     private readonly Label _logEmpty = new();
@@ -200,7 +203,7 @@ public sealed class MainForm : Form
             AutoScroll = true,
             Top = 32,
             ColumnCount = 2,
-            RowCount = 12,
+            RowCount = 14,
             Padding = new Padding(0, 28, 0, 0)
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
@@ -235,16 +238,42 @@ public sealed class MainForm : Form
         layout.Controls.Add(CreateAutocompleteField("Drop-off address", _dropoffInput), 0, 4);
         layout.SetColumnSpan(layout.Controls[^1], 2);
 
-        AddSectionLabel(layout, "Pricing controls", 5);
+        AddSectionLabel(layout, "Customer details", 5);
 
-        layout.Controls.Add(CreateNumericField("Hook/Base Fee ($)", _baseFeeInput, 0, 1000, 1, 0), 0, 6);
-        layout.Controls.Add(CreateNumericField("Rate per Mile ($)", _rateInput, 0, 1000, 0.01m, 2), 1, 6);
+        layout.Controls.Add(CreateTextField("Customer name", _customerNameInput), 0, 6);
+        layout.SetColumnSpan(layout.Controls[^1], 2);
 
-        layout.Controls.Add(CreateNumericField("Discount %", _discountPercentInput, 0, 100, 0.1m, 1), 0, 7);
-        layout.Controls.Add(CreateNumericField("Discount $", _discountAmountInput, 0, 1000, 0.01m, 2), 1, 7);
+        var phonePanel = new Panel { Dock = DockStyle.Top, Height = 60 };
+        var phoneLabel = new Label { Text = "Phone numbers", AutoSize = true };
+        phoneLabel.Dock = DockStyle.Top;
+        var phoneRow = new TableLayoutPanel
+        {
+            Dock = DockStyle.Bottom,
+            ColumnCount = 2
+        };
+        phoneRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        phoneRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        _customerPhonePrimaryInput.PlaceholderText = "Primary phone";
+        _customerPhoneSecondaryInput.PlaceholderText = "Secondary phone";
+        _customerPhonePrimaryInput.Dock = DockStyle.Fill;
+        _customerPhoneSecondaryInput.Dock = DockStyle.Fill;
+        phoneRow.Controls.Add(_customerPhonePrimaryInput, 0, 0);
+        phoneRow.Controls.Add(_customerPhoneSecondaryInput, 1, 0);
+        phonePanel.Controls.Add(phoneRow);
+        phonePanel.Controls.Add(phoneLabel);
+        layout.Controls.Add(phonePanel, 0, 7);
+        layout.SetColumnSpan(phonePanel, 2);
+
+        AddSectionLabel(layout, "Pricing controls", 8);
+
+        layout.Controls.Add(CreateNumericField("Hook/Base Fee ($)", _baseFeeInput, 0, 1000, 1, 0), 0, 9);
+        layout.Controls.Add(CreateNumericField("Rate per Mile ($)", _rateInput, 0, 1000, 0.01m, 2), 1, 9);
+
+        layout.Controls.Add(CreateNumericField("Discount %", _discountPercentInput, 0, 100, 0.1m, 1), 0, 10);
+        layout.Controls.Add(CreateNumericField("Discount $", _discountAmountInput, 0, 1000, 0.01m, 2), 1, 10);
 
         var discountReasonPanel = CreateTextField("Discount reason", _discountReasonInput);
-        layout.Controls.Add(discountReasonPanel, 0, 8);
+        layout.Controls.Add(discountReasonPanel, 0, 11);
         layout.SetColumnSpan(discountReasonPanel, 2);
 
         var buttonPanel = new FlowLayoutPanel
@@ -278,7 +307,7 @@ public sealed class MainForm : Form
         buttonPanel.Controls.Add(calcButton);
         buttonPanel.Controls.Add(printButton);
 
-        layout.Controls.Add(buttonPanel, 0, 9);
+        layout.Controls.Add(buttonPanel, 0, 12);
         layout.SetColumnSpan(buttonPanel, 2);
 
         AttachAutocomplete(_deadheadInput, point => _deadheadPoint = point);
@@ -383,9 +412,11 @@ public sealed class MainForm : Form
         _logList.Dock = DockStyle.Fill;
         _logList.View = View.Details;
         _logList.FullRowSelect = true;
-        _logList.Columns.Add("When", 180);
-        _logList.Columns.Add("Pickup", 240);
-        _logList.Columns.Add("Dropoff", 240);
+        _logList.Columns.Add("When", 160);
+        _logList.Columns.Add("Customer", 180);
+        _logList.Columns.Add("Phone(s)", 180);
+        _logList.Columns.Add("Pickup", 220);
+        _logList.Columns.Add("Dropoff", 220);
         _logList.Columns.Add("Total", 100, HorizontalAlignment.Right);
         _logList.Columns.Add("Miles", 80, HorizontalAlignment.Right);
         layout.Controls.Add(_logList);
@@ -567,6 +598,9 @@ public sealed class MainForm : Form
         _discountPercentInput.Value = _prefs.DiscountPercent;
         _discountAmountInput.Value = _prefs.DiscountAmount;
         _discountReasonInput.Text = _prefs.DiscountReason;
+        _customerNameInput.Text = string.Empty;
+        _customerPhonePrimaryInput.Text = string.Empty;
+        _customerPhoneSecondaryInput.Text = string.Empty;
         _heroYard.Text = _prefs.YardAddress;
         ApplyDefaultYardToggle();
 
@@ -619,6 +653,9 @@ public sealed class MainForm : Form
         var discountPercent = Math.Max(0, _discountPercentInput.Value);
         var discountAmount = Math.Max(0, _discountAmountInput.Value);
         var discountReason = _discountReasonInput.Text.Trim();
+        var customerName = _customerNameInput.Text.Trim();
+        var phonePrimary = _customerPhonePrimaryInput.Text.Trim();
+        var phoneSecondary = _customerPhoneSecondaryInput.Text.Trim();
 
         try
         {
@@ -665,6 +702,9 @@ public sealed class MainForm : Form
             {
                 Id = Guid.NewGuid(),
                 When = DateTimeOffset.Now,
+                CustomerName = customerName,
+                PhonePrimary = phonePrimary,
+                PhoneSecondary = phoneSecondary,
                 Pickup = pickup.Formatted,
                 Dropoff = dropoff.Formatted,
                 Deadhead = dead.Formatted,
@@ -714,7 +754,7 @@ public sealed class MainForm : Form
         var filtered = _logs.Where(entry =>
         {
             var matchesDate = !_logDate.Checked || entry.When.Date == _logDate.Value.Date;
-            var haystack = $"{entry.Pickup} {entry.Dropoff} {entry.Deadhead} {entry.Notes} {entry.TotalCost}".ToLowerInvariant();
+            var haystack = $"{entry.CustomerName} {entry.PhonePrimary} {entry.PhoneSecondary} {entry.Pickup} {entry.Dropoff} {entry.Deadhead} {entry.Notes} {entry.TotalCost}".ToLowerInvariant();
             var matchesSearch = string.IsNullOrWhiteSpace(search) || haystack.Contains(search);
             return matchesDate && matchesSearch;
         }).ToList();
@@ -722,6 +762,11 @@ public sealed class MainForm : Form
         foreach (var entry in filtered)
         {
             var item = new ListViewItem(entry.When.LocalDateTime.ToString(CultureInfo.CurrentCulture));
+            var phones = string.IsNullOrWhiteSpace(entry.PhoneSecondary)
+                ? entry.PhonePrimary
+                : $"{entry.PhonePrimary} / {entry.PhoneSecondary}";
+            item.SubItems.Add(string.IsNullOrWhiteSpace(entry.CustomerName) ? "-" : entry.CustomerName);
+            item.SubItems.Add(string.IsNullOrWhiteSpace(phones) ? "-" : phones);
             item.SubItems.Add(entry.Pickup);
             item.SubItems.Add(entry.Dropoff);
             item.SubItems.Add(FormatMoney(entry.TotalCost));

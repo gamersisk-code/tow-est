@@ -18,6 +18,9 @@ public sealed class LogEntry
 {
     public Guid Id { get; set; }
     public DateTimeOffset When { get; set; }
+    public string CustomerName { get; set; } = string.Empty;
+    public string PhonePrimary { get; set; } = string.Empty;
+    public string PhoneSecondary { get; set; } = string.Empty;
     public string Pickup { get; set; } = string.Empty;
     public string Dropoff { get; set; } = string.Empty;
     public string Deadhead { get; set; } = string.Empty;
