@@ -852,27 +852,48 @@ class TowEstimatorApp:
             width=content_width,
             anchor="nw",
         )
+        bbox = canvas.bbox("all")
+        if bbox:
+            required_height = bbox[3] + 40
+            if required_height > canvas.winfo_height():
+                canvas.config(height=required_height)
+                preview = canvas.winfo_toplevel()
+                preview.update_idletasks()
+                current_width = preview.winfo_width()
+                current_height = preview.winfo_height()
+                target_height = required_height + 140
+                if target_height > current_height:
+                    preview.geometry(f"{current_width}x{target_height}")
 
     def _print_canvas(self, canvas: Canvas) -> None:
         preview = canvas.winfo_toplevel()
         preview.update_idletasks()
-        x = preview.winfo_rootx()
-        y = preview.winfo_rooty()
-        width = preview.winfo_width()
-        height = preview.winfo_height()
+        canvas.update_idletasks()
+        bbox = canvas.bbox("all") or (0, 0, canvas.winfo_width(), canvas.winfo_height())
+        x = canvas.winfo_rootx() + bbox[0]
+        y = canvas.winfo_rooty() + bbox[1]
+        width = bbox[2] - bbox[0]
+        height = bbox[3] - bbox[1]
         file_path = app_directory() / "tow_estimator_quote.png"
-        if importlib.util.find_spec("PIL.ImageGrab") is None:
-            messagebox.showerror(
-                "Save error",
-                "Image export requires Pillow. Install it with: pip install Pillow",
+        if importlib.util.find_spec("PIL.ImageGrab") is not None:
+            image_grab = importlib.import_module("PIL.ImageGrab")
+            try:
+                snapshot = image_grab.grab(bbox=(x, y, x + width, y + height))
+                snapshot.save(file_path)
+            except OSError as exc:
+                messagebox.showerror("Save error", str(exc))
+                return
+        else:
+            ps_path = app_directory() / "tow_estimator_quote.ps"
+            try:
+                canvas.postscript(file=str(ps_path), colormode="color")
+            except OSError as exc:
+                messagebox.showerror("Save error", str(exc))
+                return
+            messagebox.showinfo(
+                "Print file created",
+                "Pillow is required to save a PNG. A PostScript file was saved instead.",
             )
-            return
-        image_grab = importlib.import_module("PIL.ImageGrab")
-        try:
-            snapshot = image_grab.grab(bbox=(x, y, x + width, y + height))
-            snapshot.save(file_path)
-        except OSError as exc:
-            messagebox.showerror("Save error", str(exc))
             return
         messagebox.showinfo(
             "Quote image saved",
