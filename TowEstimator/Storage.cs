@@ -51,15 +51,15 @@ public sealed class Storage
         {
             if (!File.Exists(_logsPath))
             {
-                return [];
+                return new List<LogEntry>();
             }
 
             var json = File.ReadAllText(_logsPath);
-            return JsonSerializer.Deserialize<List<LogEntry>>(json) ?? [];
+            return JsonSerializer.Deserialize<List<LogEntry>>(json) ?? new List<LogEntry>();
         }
         catch
         {
-            return [];
+            return new List<LogEntry>();
         }
     }
 

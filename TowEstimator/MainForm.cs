@@ -102,7 +102,7 @@ public sealed class MainForm : Form
 
         _heroYard.Text = _prefs.YardAddress;
         _heroYard.ForeColor = Color.White;
-        _heroYard.Font = new Font(Font, 10, FontStyle.Bold);
+        _heroYard.Font = new Font(Font.FontFamily, 10, FontStyle.Bold);
         _heroYard.AutoSize = true;
 
         var rightPanel = new Panel
@@ -176,7 +176,7 @@ public sealed class MainForm : Form
         var heading = new Label
         {
             Text = "Route & Pricing",
-            Font = new Font(Font, 12, FontStyle.Bold),
+            Font = new Font(Font.FontFamily, 12, FontStyle.Bold),
             AutoSize = true
         };
         panel.Controls.Add(heading);
@@ -301,7 +301,7 @@ public sealed class MainForm : Form
         var title = new Label
         {
             Text = "Quote Log",
-            Font = new Font(Font, 12, FontStyle.Bold),
+            Font = new Font(Font.FontFamily, 12, FontStyle.Bold),
             AutoSize = true
         };
         var layout = new TableLayoutPanel
@@ -373,7 +373,7 @@ public sealed class MainForm : Form
         var label = new Label
         {
             Text = text.ToUpperInvariant(),
-            Font = new Font(Font, 8, FontStyle.Bold),
+            Font = new Font(Font.FontFamily, 8, FontStyle.Bold),
             ForeColor = Color.FromArgb(100, 116, 139),
             AutoSize = true,
             Margin = new Padding(0, 10, 0, 6)
@@ -696,6 +696,10 @@ public sealed class MainForm : Form
     private void RenderPrintPage(PrintPageEventArgs args, LogEntry entry)
     {
         var g = args.Graphics;
+        if (g is null)
+        {
+            return;
+        }
         var font = new Font("Segoe UI", 10);
         var bold = new Font("Segoe UI", 12, FontStyle.Bold);
         float y = 40;
