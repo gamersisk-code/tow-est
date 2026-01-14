@@ -40,6 +40,7 @@ public sealed class MainForm : Form
     private readonly Label _heroYard = new();
     private readonly Label _yardInfoLabel = new();
     private readonly ToolTip _toolTip = new();
+    private bool _suppressAutocompleteHide;
 
     private GeoPoint? _deadheadPoint;
     private GeoPoint? _pickupPoint;
@@ -63,7 +64,7 @@ public sealed class MainForm : Form
         var mainPanel = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(16),
+            Padding = new Padding(24),
             RowCount = 2,
             ColumnCount = 1,
         };
@@ -125,7 +126,7 @@ public sealed class MainForm : Form
 
     private Control BuildTabs()
     {
-        var tabs = new TabControl { Dock = DockStyle.Fill };
+        var tabs = new TabControl { Dock = DockStyle.Fill, Padding = new Point(12, 6) };
         var estimatorTab = new TabPage("Estimator") { BackColor = Color.FromArgb(241, 245, 249), AutoScroll = true };
         var logTab = new TabPage("Quote Log") { BackColor = Color.FromArgb(241, 245, 249), AutoScroll = true };
 
@@ -161,7 +162,7 @@ public sealed class MainForm : Form
 
     private Control BuildRoutePanel()
     {
-        var panel = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Padding = new Padding(16) };
+        var panel = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Padding = new Padding(20) };
         panel.BorderStyle = BorderStyle.FixedSingle;
 
         var heading = new Label
@@ -179,10 +180,16 @@ public sealed class MainForm : Form
             Top = 32,
             ColumnCount = 2,
             RowCount = 15,
-            Padding = new Padding(0, 28, 0, 0)
+            Padding = new Padding(0, 28, 0, 0),
+            AutoSize = true,
+            GrowStyle = TableLayoutPanelGrowStyle.FixedSize
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        for (var i = 0; i < layout.RowCount; i++)
+        {
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        }
         panel.Controls.Add(layout);
 
         AddSectionLabel(layout, "Route details", 0);
@@ -201,7 +208,8 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Top,
             AutoSize = true,
-            FlowDirection = FlowDirection.LeftToRight
+            FlowDirection = FlowDirection.LeftToRight,
+            Margin = new Padding(0, 6, 0, 6)
         };
         _useDefaultYardToggle.Text = "Use default yard for deadhead";
         _useDefaultYardToggle.AutoSize = true;
@@ -228,13 +236,14 @@ public sealed class MainForm : Form
         layout.Controls.Add(CreateTextField("Customer name", _customerNameInput), 0, 7);
         layout.SetColumnSpan(layout.Controls[^1], 2);
 
-        var phonePanel = new Panel { Dock = DockStyle.Top, Height = 60 };
+        var phonePanel = new Panel { Dock = DockStyle.Top, Height = 70 };
         var phoneLabel = new Label { Text = "Phone numbers", AutoSize = true };
         phoneLabel.Dock = DockStyle.Top;
         var phoneRow = new TableLayoutPanel
         {
             Dock = DockStyle.Bottom,
-            ColumnCount = 2
+            ColumnCount = 2,
+            Padding = new Padding(0, 4, 0, 0)
         };
         phoneRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         phoneRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
@@ -242,6 +251,7 @@ public sealed class MainForm : Form
         _customerPhoneSecondaryInput.PlaceholderText = "Secondary phone";
         _customerPhonePrimaryInput.Dock = DockStyle.Fill;
         _customerPhoneSecondaryInput.Dock = DockStyle.Fill;
+        _customerPhonePrimaryInput.Margin = new Padding(0, 0, 6, 0);
         phoneRow.Controls.Add(_customerPhonePrimaryInput, 0, 0);
         phoneRow.Controls.Add(_customerPhoneSecondaryInput, 1, 0);
         phonePanel.Controls.Add(phoneRow);
@@ -266,7 +276,8 @@ public sealed class MainForm : Form
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
-            AutoSize = true
+            AutoSize = true,
+            Margin = new Padding(0, 8, 0, 0)
         };
         var calcButton = new Button
         {
@@ -319,7 +330,7 @@ public sealed class MainForm : Form
 
     private Control BuildSummaryPanel()
     {
-        var panel = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Padding = new Padding(16) };
+        var panel = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Padding = new Padding(20) };
         panel.BorderStyle = BorderStyle.FixedSingle;
 
         var badge = new Label
@@ -354,7 +365,7 @@ public sealed class MainForm : Form
 
     private Control BuildLogSection()
     {
-        var panel = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Padding = new Padding(16) };
+        var panel = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Padding = new Padding(20) };
         panel.BorderStyle = BorderStyle.FixedSingle;
 
         var title = new Label
@@ -367,7 +378,9 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             RowCount = 3,
-            ColumnCount = 1
+            ColumnCount = 1,
+            AutoSize = true,
+            GrowStyle = TableLayoutPanelGrowStyle.FixedSize
         };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -481,19 +494,26 @@ public sealed class MainForm : Form
         {
             Visible = false,
             Dock = DockStyle.Bottom,
-            Height = 90
+            Height = 110,
+            IntegralHeight = false
         };
-        listBox.Click += (_, _) =>
+        listBox.MouseDown += (_, e) =>
         {
-            if (listBox.SelectedItem is GeoPoint item)
+            var index = listBox.IndexFromPoint(e.Location);
+            if (index >= 0)
             {
-                input.Text = item.Formatted;
-                if (listBox.Tag is Action<GeoPoint?> onSelect)
+                listBox.SelectedIndex = index;
+                if (listBox.SelectedItem is GeoPoint item)
                 {
-                    onSelect(item);
+                    input.Text = item.Formatted;
+                    if (listBox.Tag is Action<GeoPoint?> onSelect)
+                    {
+                        onSelect(item);
+                    }
                 }
+                listBox.Visible = false;
             }
-            listBox.Visible = false;
+            _suppressAutocompleteHide = true;
         };
 
         _autocompleteLists[input] = listBox;
@@ -527,6 +547,15 @@ public sealed class MainForm : Form
         {
             if (_autocompleteLists.TryGetValue(input, out var listBox))
             {
+                if (_suppressAutocompleteHide)
+                {
+                    _suppressAutocompleteHide = false;
+                    return;
+                }
+                if (listBox.Visible && listBox.RectangleToScreen(listBox.ClientRectangle).Contains(Cursor.Position))
+                {
+                    return;
+                }
                 var timer = new System.Windows.Forms.Timer { Interval = 150 };
                 timer.Tick += (_, _) =>
                 {
