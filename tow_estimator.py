@@ -5,6 +5,8 @@ Portable Windows-friendly UI that stores logs next to the executable.
 
 from __future__ import annotations
 
+import importlib
+import importlib.util
 import json
 import sys
 import threading
@@ -15,8 +17,6 @@ from tkinter import Canvas, Listbox, StringVar, Text, Tk, Toplevel, messagebox
 from tkinter import ttk
 from urllib.parse import urlencode
 from urllib.request import urlopen
-
-from PIL import ImageGrab
 
 GEOAPIFY_KEY = "7305e94ac22249c1b3224802b9c1409d"
 COUNTRY_FILTER = "us"
@@ -861,8 +861,15 @@ class TowEstimatorApp:
         width = preview.winfo_width()
         height = preview.winfo_height()
         file_path = app_directory() / "tow_estimator_quote.png"
+        if importlib.util.find_spec("PIL.ImageGrab") is None:
+            messagebox.showerror(
+                "Save error",
+                "Image export requires Pillow. Install it with: pip install Pillow",
+            )
+            return
+        image_grab = importlib.import_module("PIL.ImageGrab")
         try:
-            snapshot = ImageGrab.grab(bbox=(x, y, x + width, y + height))
+            snapshot = image_grab.grab(bbox=(x, y, x + width, y + height))
             snapshot.save(file_path)
         except OSError as exc:
             messagebox.showerror("Save error", str(exc))
