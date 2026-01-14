@@ -16,6 +16,7 @@ from tkinter import ttk
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
+from PIL import ImageGrab
 
 GEOAPIFY_KEY = "7305e94ac22249c1b3224802b9c1409d"
 COUNTRY_FILTER = "us"
@@ -681,12 +682,15 @@ class TowEstimatorApp:
         button_row.pack(fill="x")
         ttk.Button(
             button_row,
-            text="Print to file",
+            text="Save quote image",
             command=lambda: self._print_canvas(canvas),
         ).pack(side="right")
 
     def _draw_print_layout(self, canvas: Canvas, quote: Quote) -> None:
-        width = int(canvas.winfo_reqwidth() or 800)
+        canvas.update_idletasks()
+        width = canvas.winfo_width()
+        if width < 600:
+            width = 800
         canvas.delete("all")
         content_width = width - 120
 
@@ -850,11 +854,22 @@ class TowEstimatorApp:
         )
 
     def _print_canvas(self, canvas: Canvas) -> None:
-        file_path = app_directory() / "tow_estimator_quote.ps"
-        canvas.postscript(file=str(file_path), colormode="color")
+        preview = canvas.winfo_toplevel()
+        preview.update_idletasks()
+        x = preview.winfo_rootx()
+        y = preview.winfo_rooty()
+        width = preview.winfo_width()
+        height = preview.winfo_height()
+        file_path = app_directory() / "tow_estimator_quote.png"
+        try:
+            snapshot = ImageGrab.grab(bbox=(x, y, x + width, y + height))
+            snapshot.save(file_path)
+        except OSError as exc:
+            messagebox.showerror("Save error", str(exc))
+            return
         messagebox.showinfo(
-            "Print file created",
-            f"Saved print file to {file_path}. Open it to print.",
+            "Quote image saved",
+            f"Saved quote image to {file_path}. Open it to print.",
         )
 
     def _load_quotes(self) -> None:
