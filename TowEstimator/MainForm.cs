@@ -126,8 +126,8 @@ public sealed class MainForm : Form
     private Control BuildTabs()
     {
         var tabs = new TabControl { Dock = DockStyle.Fill };
-        var estimatorTab = new TabPage("Estimator") { BackColor = Color.FromArgb(241, 245, 249) };
-        var logTab = new TabPage("Quote Log") { BackColor = Color.FromArgb(241, 245, 249) };
+        var estimatorTab = new TabPage("Estimator") { BackColor = Color.FromArgb(241, 245, 249), AutoScroll = true };
+        var logTab = new TabPage("Quote Log") { BackColor = Color.FromArgb(241, 245, 249), AutoScroll = true };
 
         estimatorTab.Controls.Add(BuildEstimatorPage());
         logTab.Controls.Add(BuildLogSection());
@@ -366,13 +366,12 @@ public sealed class MainForm : Form
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            RowCount = 4,
+            RowCount = 3,
             ColumnCount = 1
         };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         panel.Controls.Add(layout);
         layout.Controls.Add(title);
 
@@ -419,12 +418,14 @@ public sealed class MainForm : Form
         _logList.Columns.Add("Dropoff", 220);
         _logList.Columns.Add("Total", 100, HorizontalAlignment.Right);
         _logList.Columns.Add("Miles", 80, HorizontalAlignment.Right);
+        _logList.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         layout.Controls.Add(_logList);
 
         _logEmpty.Text = "No quotes yet. Run an estimate to save it here.";
         _logEmpty.AutoSize = true;
         _logEmpty.ForeColor = Color.FromArgb(100, 116, 139);
-        layout.Controls.Add(_logEmpty);
+        _logEmpty.Dock = DockStyle.Bottom;
+        panel.Controls.Add(_logEmpty);
 
         return panel;
     }
