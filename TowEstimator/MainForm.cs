@@ -40,7 +40,6 @@ public sealed class MainForm : Form
     private readonly Label _heroYard = new();
     private readonly Label _yardInfoLabel = new();
     private readonly ToolTip _toolTip = new();
-    private bool _suppressAutocompleteHide;
 
     private GeoPoint? _deadheadPoint;
     private GeoPoint? _pickupPoint;
@@ -57,7 +56,7 @@ public sealed class MainForm : Form
         _logs = _storage.LoadLogs();
 
         Text = "Southern Pride Towing — Price Estimator";
-        MinimumSize = new Size(1100, 760);
+        MinimumSize = new Size(1200, 800);
         Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point);
         StartPosition = FormStartPosition.CenterScreen;
 
@@ -66,7 +65,7 @@ public sealed class MainForm : Form
             Dock = DockStyle.Fill,
             Padding = new Padding(24),
             RowCount = 2,
-            ColumnCount = 1,
+            ColumnCount = 1
         };
         mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -127,8 +126,8 @@ public sealed class MainForm : Form
     private Control BuildTabs()
     {
         var tabs = new TabControl { Dock = DockStyle.Fill, Padding = new Point(12, 6) };
-        var estimatorTab = new TabPage("Estimator") { BackColor = Color.FromArgb(241, 245, 249), AutoScroll = true };
-        var logTab = new TabPage("Quote Log") { BackColor = Color.FromArgb(241, 245, 249), AutoScroll = true };
+        var estimatorTab = new TabPage("Estimator") { BackColor = Color.FromArgb(241, 245, 249) };
+        var logTab = new TabPage("Quote Log") { BackColor = Color.FromArgb(241, 245, 249) };
 
         estimatorTab.Controls.Add(BuildEstimatorPage());
         logTab.Controls.Add(BuildLogSection());
@@ -140,24 +139,19 @@ public sealed class MainForm : Form
 
     private Control BuildEstimatorPage()
     {
-        var section = new TableLayoutPanel
+        var split = new SplitContainer
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 2,
+            SplitterDistance = 650,
+            Orientation = Orientation.Vertical,
+            Panel1MinSize = 420,
+            Panel2MinSize = 300
         };
-        section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
-        section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
 
-        var leftPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 12, 8, 0) };
-        var rightPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(8, 12, 0, 0) };
+        split.Panel1.Controls.Add(BuildRoutePanel());
+        split.Panel2.Controls.Add(BuildSummaryPanel());
 
-        leftPanel.Controls.Add(BuildRoutePanel());
-        rightPanel.Controls.Add(BuildSummaryPanel());
-
-        section.Controls.Add(leftPanel, 0, 0);
-        section.Controls.Add(rightPanel, 1, 0);
-
-        return section;
+        return split;
     }
 
     private Control BuildRoutePanel()
@@ -173,43 +167,40 @@ public sealed class MainForm : Form
         };
         panel.Controls.Add(heading);
 
-        var layout = new TableLayoutPanel
+        var scroll = new Panel
         {
             Dock = DockStyle.Fill,
             AutoScroll = true,
-            Top = 32,
-            ColumnCount = 2,
-            RowCount = 15,
-            Padding = new Padding(0, 28, 0, 0),
-            AutoSize = true,
-            GrowStyle = TableLayoutPanelGrowStyle.FixedSize
+            Padding = new Padding(0, 12, 8, 0)
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        for (var i = 0; i < layout.RowCount; i++)
-        {
-            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        }
-        panel.Controls.Add(layout);
+        panel.Controls.Add(scroll);
 
-        AddSectionLabel(layout, "Route details", 0);
+        var stack = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoSize = true
+        };
+        scroll.Controls.Add(stack);
+
+        stack.Controls.Add(BuildSectionLabel("Route details"));
 
         _yardInfoLabel.Text = $"Default yard: {_prefs.YardAddress}";
         _yardInfoLabel.ForeColor = Color.FromArgb(100, 116, 139);
         _yardInfoLabel.AutoSize = true;
-        layout.Controls.Add(_yardInfoLabel, 0, 1);
-        layout.SetColumnSpan(_yardInfoLabel, 2);
+        _yardInfoLabel.Margin = new Padding(0, 0, 0, 8);
+        stack.Controls.Add(_yardInfoLabel);
 
         _deadheadInput.PlaceholderText = "Your yard address";
-        layout.Controls.Add(CreateAutocompleteField("Deadhead start (your yard/base)", _deadheadInput), 0, 2);
-        layout.SetColumnSpan(layout.Controls[^1], 2);
+        stack.Controls.Add(CreateAutocompleteField("Deadhead start (your yard/base)", _deadheadInput));
 
-        var defaultTogglePanel = new FlowLayoutPanel
+        var togglePanel = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
             FlowDirection = FlowDirection.LeftToRight,
-            Margin = new Padding(0, 6, 0, 6)
+            Margin = new Padding(0, 0, 0, 10)
         };
         _useDefaultYardToggle.Text = "Use default yard for deadhead";
         _useDefaultYardToggle.AutoSize = true;
@@ -218,72 +209,40 @@ public sealed class MainForm : Form
             ApplyDefaultYardToggle();
             SavePreferences();
         };
-        defaultTogglePanel.Controls.Add(_useDefaultYardToggle);
-        layout.Controls.Add(defaultTogglePanel, 0, 3);
-        layout.SetColumnSpan(defaultTogglePanel, 2);
+        togglePanel.Controls.Add(_useDefaultYardToggle);
+        stack.Controls.Add(togglePanel);
 
         _pickupInput.PlaceholderText = "Pickup address";
-        layout.Controls.Add(CreateAutocompleteField("Pickup address", _pickupInput), 0, 4);
-        layout.SetColumnSpan(layout.Controls[^1], 2);
+        stack.Controls.Add(CreateAutocompleteField("Pickup address", _pickupInput));
 
         _dropoffInput.PlaceholderText = "Drop-off address";
-        layout.Controls.Add(CreateAutocompleteField("Drop-off address", _dropoffInput), 0, 5);
-        layout.SetColumnSpan(layout.Controls[^1], 2);
+        stack.Controls.Add(CreateAutocompleteField("Drop-off address", _dropoffInput));
 
-        AddSectionLabel(layout, "Customer details", 6);
+        stack.Controls.Add(BuildSectionLabel("Customer details"));
 
         _customerNameInput.PlaceholderText = "Customer name";
-        layout.Controls.Add(CreateTextField("Customer name", _customerNameInput), 0, 7);
-        layout.SetColumnSpan(layout.Controls[^1], 2);
+        stack.Controls.Add(CreateTextField("Customer name", _customerNameInput));
 
-        var phonePanel = new Panel { Dock = DockStyle.Top, Height = 70 };
-        var phoneLabel = new Label { Text = "Phone numbers", AutoSize = true };
-        phoneLabel.Dock = DockStyle.Top;
-        var phoneRow = new TableLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            ColumnCount = 2,
-            Padding = new Padding(0, 4, 0, 0)
-        };
-        phoneRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        phoneRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        _customerPhonePrimaryInput.PlaceholderText = "Primary phone";
-        _customerPhoneSecondaryInput.PlaceholderText = "Secondary phone";
-        _customerPhonePrimaryInput.Dock = DockStyle.Fill;
-        _customerPhoneSecondaryInput.Dock = DockStyle.Fill;
-        _customerPhonePrimaryInput.Margin = new Padding(0, 0, 6, 0);
-        phoneRow.Controls.Add(_customerPhonePrimaryInput, 0, 0);
-        phoneRow.Controls.Add(_customerPhoneSecondaryInput, 1, 0);
-        phonePanel.Controls.Add(phoneRow);
-        phonePanel.Controls.Add(phoneLabel);
-        layout.Controls.Add(phonePanel, 0, 8);
-        layout.SetColumnSpan(phonePanel, 2);
+        stack.Controls.Add(CreatePhonePanel());
 
-        AddSectionLabel(layout, "Pricing controls", 9);
+        stack.Controls.Add(BuildSectionLabel("Pricing controls"));
 
-        layout.Controls.Add(CreateNumericField("Hook/Base Fee ($)", _baseFeeInput, 0, 1000, 1, 0), 0, 10);
-        layout.Controls.Add(CreateNumericField("Rate per Mile ($)", _rateInput, 0, 1000, 0.01m, 2), 1, 10);
-
-        layout.Controls.Add(CreateNumericField("Discount %", _discountPercentInput, 0, 100, 0.1m, 1), 0, 11);
-        layout.Controls.Add(CreateNumericField("Discount $", _discountAmountInput, 0, 1000, 0.01m, 2), 1, 11);
-
-        var discountReasonPanel = CreateTextField("Discount reason", _discountReasonInput);
-        layout.Controls.Add(discountReasonPanel, 0, 12);
-        layout.SetColumnSpan(discountReasonPanel, 2);
+        stack.Controls.Add(CreateMoneyPanel());
+        stack.Controls.Add(CreateDiscountPanel());
+        stack.Controls.Add(CreateTextField("Discount reason", _discountReasonInput));
 
         var buttonPanel = new FlowLayoutPanel
         {
-            Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
+            Dock = DockStyle.Top,
             AutoSize = true,
-            Margin = new Padding(0, 8, 0, 0)
+            FlowDirection = FlowDirection.LeftToRight,
+            Margin = new Padding(0, 12, 0, 0)
         };
         var calcButton = new Button
         {
             Text = "Get Estimate",
             AutoSize = false,
-            Width = 240,
+            Width = 160,
             Height = 36,
             BackColor = Color.FromArgb(15, 23, 42),
             ForeColor = Color.White
@@ -294,28 +253,26 @@ public sealed class MainForm : Form
         {
             Text = "Print Estimate",
             AutoSize = false,
-            Width = 240,
+            Width = 160,
             Height = 36,
             BackColor = Color.FromArgb(241, 245, 249)
         };
         printButton.Click += (_, _) => PrintEstimate();
 
-        buttonPanel.Controls.Add(calcButton);
-        buttonPanel.Controls.Add(printButton);
-
         var clearButton = new Button
         {
             Text = "Clear Form",
             AutoSize = false,
-            Width = 240,
+            Width = 160,
             Height = 36,
             BackColor = Color.FromArgb(241, 245, 249)
         };
         clearButton.Click += (_, _) => ClearForm();
-        buttonPanel.Controls.Add(clearButton);
 
-        layout.Controls.Add(buttonPanel, 0, 13);
-        layout.SetColumnSpan(buttonPanel, 2);
+        buttonPanel.Controls.Add(calcButton);
+        buttonPanel.Controls.Add(printButton);
+        buttonPanel.Controls.Add(clearButton);
+        stack.Controls.Add(buttonPanel);
 
         AttachAutocomplete(_deadheadInput, point => _deadheadPoint = point);
         AttachAutocomplete(_pickupInput, point => _pickupPoint = point);
@@ -341,6 +298,14 @@ public sealed class MainForm : Form
             BackColor = Color.FromArgb(15, 23, 42),
             Padding = new Padding(6)
         };
+
+        _resultBox.Multiline = true;
+        _resultBox.ReadOnly = true;
+        _resultBox.BackColor = Color.FromArgb(239, 246, 255);
+        _resultBox.BorderStyle = BorderStyle.FixedSingle;
+        _resultBox.ScrollBars = ScrollBars.Vertical;
+        _resultBox.Dock = DockStyle.Fill;
+
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -350,16 +315,9 @@ public sealed class MainForm : Form
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         layout.Controls.Add(badge);
-
-        _resultBox.Multiline = true;
-        _resultBox.ReadOnly = true;
-        _resultBox.BackColor = Color.FromArgb(239, 246, 255);
-        _resultBox.BorderStyle = BorderStyle.FixedSingle;
-        _resultBox.ScrollBars = ScrollBars.Vertical;
-        _resultBox.Dock = DockStyle.Fill;
         layout.Controls.Add(_resultBox);
-        panel.Controls.Add(layout);
 
+        panel.Controls.Add(layout);
         return panel;
     }
 
@@ -374,13 +332,12 @@ public sealed class MainForm : Form
             Font = new Font(Font.FontFamily, 12, FontStyle.Bold),
             AutoSize = true
         };
+
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             RowCount = 3,
-            ColumnCount = 1,
-            AutoSize = true,
-            GrowStyle = TableLayoutPanelGrowStyle.FixedSize
+            ColumnCount = 1
         };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -393,7 +350,7 @@ public sealed class MainForm : Form
             Dock = DockStyle.Top,
             FlowDirection = FlowDirection.LeftToRight,
             AutoSize = true,
-            Padding = new Padding(0, 32, 0, 0)
+            Padding = new Padding(0, 12, 0, 0)
         };
 
         var dateLabel = new Label { Text = "Filter by date", AutoSize = true, Margin = new Padding(0, 6, 6, 0) };
@@ -431,7 +388,6 @@ public sealed class MainForm : Form
         _logList.Columns.Add("Dropoff", 220);
         _logList.Columns.Add("Total", 100, HorizontalAlignment.Right);
         _logList.Columns.Add("Miles", 80, HorizontalAlignment.Right);
-        _logList.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         layout.Controls.Add(_logList);
 
         _logEmpty.Text = "No quotes yet. Run an estimate to save it here.";
@@ -443,40 +399,23 @@ public sealed class MainForm : Form
         return panel;
     }
 
-    private void AddSectionLabel(TableLayoutPanel layout, string text, int row)
+    private Control BuildSectionLabel(string text)
     {
-        var label = new Label
+        return new Label
         {
             Text = text.ToUpperInvariant(),
             Font = new Font(Font.FontFamily, 8, FontStyle.Bold),
             ForeColor = Color.FromArgb(100, 116, 139),
             AutoSize = true,
-            Margin = new Padding(0, 10, 0, 6)
+            Margin = new Padding(0, 12, 0, 6)
         };
-        layout.Controls.Add(label, 0, row);
-        layout.SetColumnSpan(label, 2);
     }
 
     private static Panel CreateTextField(string labelText, TextBox input)
     {
-        var panel = new Panel { Dock = DockStyle.Top, Height = 60 };
+        var panel = new Panel { Dock = DockStyle.Top, Height = 64 };
         var label = new Label { Text = labelText, AutoSize = true };
         label.Dock = DockStyle.Top;
-        input.Dock = DockStyle.Bottom;
-        panel.Controls.Add(input);
-        panel.Controls.Add(label);
-        return panel;
-    }
-
-    private static Panel CreateNumericField(string labelText, NumericUpDown input, decimal min, decimal max, decimal increment, int decimals)
-    {
-        var panel = new Panel { Dock = DockStyle.Top, Height = 60 };
-        var label = new Label { Text = labelText, AutoSize = true };
-        label.Dock = DockStyle.Top;
-        input.DecimalPlaces = decimals;
-        input.Minimum = min;
-        input.Maximum = max;
-        input.Increment = increment;
         input.Dock = DockStyle.Bottom;
         panel.Controls.Add(input);
         panel.Controls.Add(label);
@@ -485,7 +424,7 @@ public sealed class MainForm : Form
 
     private Panel CreateAutocompleteField(string labelText, TextBox input)
     {
-        var panel = new Panel { Dock = DockStyle.Top, Height = 90 };
+        var panel = new Panel { Dock = DockStyle.Top, Height = 110 };
         var label = new Label { Text = labelText, AutoSize = true };
         label.Dock = DockStyle.Top;
         input.Dock = DockStyle.Top;
@@ -513,7 +452,6 @@ public sealed class MainForm : Form
                 }
                 listBox.Visible = false;
             }
-            _suppressAutocompleteHide = true;
         };
 
         _autocompleteLists[input] = listBox;
@@ -524,18 +462,113 @@ public sealed class MainForm : Form
         return panel;
     }
 
+    private Panel CreatePhonePanel()
+    {
+        var panel = new Panel { Dock = DockStyle.Top, Height = 78 };
+        var label = new Label { Text = "Phone numbers", AutoSize = true };
+        label.Dock = DockStyle.Top;
+
+        var row = new TableLayoutPanel
+        {
+            Dock = DockStyle.Bottom,
+            ColumnCount = 2,
+            Padding = new Padding(0, 6, 0, 0)
+        };
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        _customerPhonePrimaryInput.PlaceholderText = "Primary phone";
+        _customerPhoneSecondaryInput.PlaceholderText = "Secondary phone";
+        _customerPhonePrimaryInput.Dock = DockStyle.Fill;
+        _customerPhoneSecondaryInput.Dock = DockStyle.Fill;
+        _customerPhonePrimaryInput.Margin = new Padding(0, 0, 8, 0);
+        row.Controls.Add(_customerPhonePrimaryInput, 0, 0);
+        row.Controls.Add(_customerPhoneSecondaryInput, 1, 0);
+
+        panel.Controls.Add(row);
+        panel.Controls.Add(label);
+        return panel;
+    }
+
+    private Panel CreateMoneyPanel()
+    {
+        var panel = new Panel { Dock = DockStyle.Top, Height = 70 };
+        var label = new Label { Text = "Base and mileage", AutoSize = true };
+        label.Dock = DockStyle.Top;
+
+        var row = new TableLayoutPanel
+        {
+            Dock = DockStyle.Bottom,
+            ColumnCount = 2,
+            Padding = new Padding(0, 6, 0, 0)
+        };
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        _baseFeeInput.DecimalPlaces = 0;
+        _baseFeeInput.Minimum = 0;
+        _baseFeeInput.Maximum = 1000;
+        _baseFeeInput.Increment = 1;
+        _rateInput.DecimalPlaces = 2;
+        _rateInput.Minimum = 0;
+        _rateInput.Maximum = 1000;
+        _rateInput.Increment = 0.01m;
+        var basePanel = CreateInlineField("Hook/Base Fee ($)", _baseFeeInput);
+        var ratePanel = CreateInlineField("Rate per Mile ($)", _rateInput);
+        row.Controls.Add(basePanel, 0, 0);
+        row.Controls.Add(ratePanel, 1, 0);
+
+        panel.Controls.Add(row);
+        panel.Controls.Add(label);
+        return panel;
+    }
+
+    private Panel CreateDiscountPanel()
+    {
+        var panel = new Panel { Dock = DockStyle.Top, Height = 70 };
+        var label = new Label { Text = "Discounts", AutoSize = true };
+        label.Dock = DockStyle.Top;
+
+        var row = new TableLayoutPanel
+        {
+            Dock = DockStyle.Bottom,
+            ColumnCount = 2,
+            Padding = new Padding(0, 6, 0, 0)
+        };
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        _discountPercentInput.DecimalPlaces = 1;
+        _discountPercentInput.Minimum = 0;
+        _discountPercentInput.Maximum = 100;
+        _discountPercentInput.Increment = 0.1m;
+        _discountAmountInput.DecimalPlaces = 2;
+        _discountAmountInput.Minimum = 0;
+        _discountAmountInput.Maximum = 1000;
+        _discountAmountInput.Increment = 0.01m;
+        var percentPanel = CreateInlineField("Discount %", _discountPercentInput);
+        var amountPanel = CreateInlineField("Discount $", _discountAmountInput);
+        row.Controls.Add(percentPanel, 0, 0);
+        row.Controls.Add(amountPanel, 1, 0);
+
+        panel.Controls.Add(row);
+        panel.Controls.Add(label);
+        return panel;
+    }
+
+    private static Panel CreateInlineField(string labelText, Control input)
+    {
+        var panel = new Panel { Dock = DockStyle.Fill, Height = 54, Margin = new Padding(0, 0, 8, 0) };
+        var label = new Label { Text = labelText, AutoSize = true };
+        label.Dock = DockStyle.Top;
+        input.Dock = DockStyle.Bottom;
+        panel.Controls.Add(input);
+        panel.Controls.Add(label);
+        return panel;
+    }
+
     private void AttachAutocomplete(TextBox input, Action<GeoPoint?> setPoint)
     {
         if (_autocompleteLists.TryGetValue(input, out var listBox))
         {
             listBox.Tag = setPoint;
-            listBox.SelectedIndexChanged += (_, _) =>
-            {
-                if (listBox.SelectedItem is GeoPoint selected)
-                {
-                    setPoint(selected);
-                }
-            };
         }
 
         input.TextChanged += (_, _) =>
@@ -547,11 +580,6 @@ public sealed class MainForm : Form
         {
             if (_autocompleteLists.TryGetValue(input, out var listBox))
             {
-                if (_suppressAutocompleteHide)
-                {
-                    _suppressAutocompleteHide = false;
-                    return;
-                }
                 if (listBox.Visible && listBox.RectangleToScreen(listBox.ClientRectangle).Contains(Cursor.Position))
                 {
                     return;
