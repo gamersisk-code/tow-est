@@ -38,6 +38,7 @@ public sealed class MainForm : Form
     private readonly DateTimePicker _logDate = new();
     private readonly TextBox _logSearch = new();
     private readonly Label _heroYard = new();
+    private readonly Label _yardInfoLabel = new();
 
     private GeoPoint? _deadheadPoint;
     private GeoPoint? _pickupPoint;
@@ -103,37 +104,9 @@ public sealed class MainForm : Form
         };
 
         _heroYard.Text = _prefs.YardAddress;
-        _heroYard.ForeColor = Color.White;
-        _heroYard.Font = new Font(Font.FontFamily, 10, FontStyle.Bold);
+        _heroYard.ForeColor = Color.FromArgb(226, 232, 240);
+        _heroYard.Font = new Font(Font.FontFamily, 9, FontStyle.Bold);
         _heroYard.AutoSize = true;
-
-        var rightPanel = new Panel
-        {
-            Dock = DockStyle.Right,
-            Width = 320,
-            BackColor = Color.FromArgb(30, 41, 59),
-            Padding = new Padding(12)
-        };
-        var rightLabel = new Label
-        {
-            Text = "Default yard",
-            ForeColor = Color.FromArgb(226, 232, 240),
-            AutoSize = true
-        };
-        var rightSub = new Label
-        {
-            Text = "Update below if needed",
-            ForeColor = Color.FromArgb(148, 163, 184),
-            AutoSize = true
-        };
-        rightPanel.Controls.Add(rightSub);
-        rightPanel.Controls.Add(_heroYard);
-        rightPanel.Controls.Add(rightLabel);
-        rightSub.Dock = DockStyle.Bottom;
-        _heroYard.Dock = DockStyle.Bottom;
-        rightLabel.Dock = DockStyle.Top;
-
-        panel.Controls.Add(rightPanel);
 
         var textPanel = new FlowLayoutPanel
         {
@@ -143,6 +116,7 @@ public sealed class MainForm : Form
         };
         textPanel.Controls.Add(title);
         textPanel.Controls.Add(subtitle);
+        textPanel.Controls.Add(_heroYard);
         panel.Controls.Add(textPanel);
 
         return panel;
@@ -203,7 +177,7 @@ public sealed class MainForm : Form
             AutoScroll = true,
             Top = 32,
             ColumnCount = 2,
-            RowCount = 14,
+            RowCount = 15,
             Padding = new Padding(0, 28, 0, 0)
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
@@ -212,7 +186,13 @@ public sealed class MainForm : Form
 
         AddSectionLabel(layout, "Route details", 0);
 
-        layout.Controls.Add(CreateAutocompleteField("Deadhead start (your yard/base)", _deadheadInput), 0, 1);
+        _yardInfoLabel.Text = $"Default yard: {_prefs.YardAddress}";
+        _yardInfoLabel.ForeColor = Color.FromArgb(100, 116, 139);
+        _yardInfoLabel.AutoSize = true;
+        layout.Controls.Add(_yardInfoLabel, 0, 1);
+        layout.SetColumnSpan(_yardInfoLabel, 2);
+
+        layout.Controls.Add(CreateAutocompleteField("Deadhead start (your yard/base)", _deadheadInput), 0, 2);
         layout.SetColumnSpan(layout.Controls[^1], 2);
 
         var defaultTogglePanel = new FlowLayoutPanel
@@ -229,18 +209,18 @@ public sealed class MainForm : Form
             SavePreferences();
         };
         defaultTogglePanel.Controls.Add(_useDefaultYardToggle);
-        layout.Controls.Add(defaultTogglePanel, 0, 2);
+        layout.Controls.Add(defaultTogglePanel, 0, 3);
         layout.SetColumnSpan(defaultTogglePanel, 2);
 
-        layout.Controls.Add(CreateAutocompleteField("Pickup address", _pickupInput), 0, 3);
+        layout.Controls.Add(CreateAutocompleteField("Pickup address", _pickupInput), 0, 4);
         layout.SetColumnSpan(layout.Controls[^1], 2);
 
-        layout.Controls.Add(CreateAutocompleteField("Drop-off address", _dropoffInput), 0, 4);
+        layout.Controls.Add(CreateAutocompleteField("Drop-off address", _dropoffInput), 0, 5);
         layout.SetColumnSpan(layout.Controls[^1], 2);
 
-        AddSectionLabel(layout, "Customer details", 5);
+        AddSectionLabel(layout, "Customer details", 6);
 
-        layout.Controls.Add(CreateTextField("Customer name", _customerNameInput), 0, 6);
+        layout.Controls.Add(CreateTextField("Customer name", _customerNameInput), 0, 7);
         layout.SetColumnSpan(layout.Controls[^1], 2);
 
         var phonePanel = new Panel { Dock = DockStyle.Top, Height = 60 };
@@ -261,19 +241,19 @@ public sealed class MainForm : Form
         phoneRow.Controls.Add(_customerPhoneSecondaryInput, 1, 0);
         phonePanel.Controls.Add(phoneRow);
         phonePanel.Controls.Add(phoneLabel);
-        layout.Controls.Add(phonePanel, 0, 7);
+        layout.Controls.Add(phonePanel, 0, 8);
         layout.SetColumnSpan(phonePanel, 2);
 
-        AddSectionLabel(layout, "Pricing controls", 8);
+        AddSectionLabel(layout, "Pricing controls", 9);
 
-        layout.Controls.Add(CreateNumericField("Hook/Base Fee ($)", _baseFeeInput, 0, 1000, 1, 0), 0, 9);
-        layout.Controls.Add(CreateNumericField("Rate per Mile ($)", _rateInput, 0, 1000, 0.01m, 2), 1, 9);
+        layout.Controls.Add(CreateNumericField("Hook/Base Fee ($)", _baseFeeInput, 0, 1000, 1, 0), 0, 10);
+        layout.Controls.Add(CreateNumericField("Rate per Mile ($)", _rateInput, 0, 1000, 0.01m, 2), 1, 10);
 
-        layout.Controls.Add(CreateNumericField("Discount %", _discountPercentInput, 0, 100, 0.1m, 1), 0, 10);
-        layout.Controls.Add(CreateNumericField("Discount $", _discountAmountInput, 0, 1000, 0.01m, 2), 1, 10);
+        layout.Controls.Add(CreateNumericField("Discount %", _discountPercentInput, 0, 100, 0.1m, 1), 0, 11);
+        layout.Controls.Add(CreateNumericField("Discount $", _discountAmountInput, 0, 1000, 0.01m, 2), 1, 11);
 
         var discountReasonPanel = CreateTextField("Discount reason", _discountReasonInput);
-        layout.Controls.Add(discountReasonPanel, 0, 11);
+        layout.Controls.Add(discountReasonPanel, 0, 12);
         layout.SetColumnSpan(discountReasonPanel, 2);
 
         var buttonPanel = new FlowLayoutPanel
@@ -307,7 +287,7 @@ public sealed class MainForm : Form
         buttonPanel.Controls.Add(calcButton);
         buttonPanel.Controls.Add(printButton);
 
-        layout.Controls.Add(buttonPanel, 0, 12);
+        layout.Controls.Add(buttonPanel, 0, 13);
         layout.SetColumnSpan(buttonPanel, 2);
 
         AttachAutocomplete(_deadheadInput, point => _deadheadPoint = point);
@@ -602,6 +582,7 @@ public sealed class MainForm : Form
         _customerPhonePrimaryInput.Text = string.Empty;
         _customerPhoneSecondaryInput.Text = string.Empty;
         _heroYard.Text = _prefs.YardAddress;
+        _yardInfoLabel.Text = $"Default yard: {_prefs.YardAddress}";
         ApplyDefaultYardToggle();
 
         _deadheadInput.Leave += (_, _) => SavePreferences();
@@ -626,6 +607,7 @@ public sealed class MainForm : Form
         _prefs.DiscountReason = _discountReasonInput.Text.Trim();
         _storage.SavePreferences(_prefs);
         _heroYard.Text = _prefs.YardAddress;
+        _yardInfoLabel.Text = $"Default yard: {_prefs.YardAddress}";
     }
 
     private void ApplyDefaultYardToggle()
