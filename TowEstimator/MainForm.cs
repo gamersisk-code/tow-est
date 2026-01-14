@@ -29,6 +29,8 @@ public sealed class MainForm : Form
     private readonly NumericUpDown _discountPercentInput = new();
     private readonly NumericUpDown _discountAmountInput = new();
     private readonly TextBox _discountReasonInput = new();
+    private readonly NumericUpDown _deadheadFeeInput = new();
+    private readonly NumericUpDown _deadheadFeeInput = new();
     private readonly TextBox _customerNameInput = new();
     private readonly TextBox _customerPhonePrimaryInput = new();
     private readonly TextBox _customerPhoneSecondaryInput = new();
@@ -228,6 +230,7 @@ public sealed class MainForm : Form
         stack.Controls.Add(BuildSectionLabel("Pricing controls"));
 
         stack.Controls.Add(CreateMoneyPanel());
+        stack.Controls.Add(CreateDeadheadFeePanel());
         stack.Controls.Add(CreateDiscountPanel());
         stack.Controls.Add(CreateTextField("Discount reason", _discountReasonInput));
 
@@ -434,25 +437,32 @@ public sealed class MainForm : Form
             Visible = false,
             Dock = DockStyle.Bottom,
             Height = 110,
-            IntegralHeight = false
+            IntegralHeight = false,
+            SelectionMode = SelectionMode.One
         };
+        void ApplySelection()
+        {
+            if (listBox.SelectedItem is GeoPoint item)
+            {
+                input.Text = item.Formatted;
+                if (listBox.Tag is Action<GeoPoint?> onSelect)
+                {
+                    onSelect(item);
+                }
+            }
+            listBox.Visible = false;
+        }
         listBox.MouseDown += (_, e) =>
         {
+            listBox.Focus();
             var index = listBox.IndexFromPoint(e.Location);
             if (index >= 0)
             {
                 listBox.SelectedIndex = index;
-                if (listBox.SelectedItem is GeoPoint item)
-                {
-                    input.Text = item.Formatted;
-                    if (listBox.Tag is Action<GeoPoint?> onSelect)
-                    {
-                        onSelect(item);
-                    }
-                }
-                listBox.Visible = false;
+                ApplySelection();
             }
         };
+        listBox.Click += (_, _) => ApplySelection();
 
         _autocompleteLists[input] = listBox;
 
@@ -464,7 +474,7 @@ public sealed class MainForm : Form
 
     private Panel CreatePhonePanel()
     {
-        var panel = new Panel { Dock = DockStyle.Top, Height = 78 };
+        var panel = new Panel { Dock = DockStyle.Top, Height = 88, Margin = new Padding(0, 0, 0, 6) };
         var label = new Label { Text = "Phone numbers", AutoSize = true };
         label.Dock = DockStyle.Top;
 
@@ -472,7 +482,8 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Bottom,
             ColumnCount = 2,
-            Padding = new Padding(0, 6, 0, 0)
+            Padding = new Padding(0, 6, 0, 0),
+            Height = 30
         };
         row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
@@ -517,6 +528,21 @@ public sealed class MainForm : Form
         row.Controls.Add(ratePanel, 1, 0);
 
         panel.Controls.Add(row);
+        panel.Controls.Add(label);
+        return panel;
+    }
+
+    private Panel CreateDeadheadFeePanel()
+    {
+        var panel = new Panel { Dock = DockStyle.Top, Height = 64 };
+        var label = new Label { Text = "Deadhead charge", AutoSize = true };
+        label.Dock = DockStyle.Top;
+        _deadheadFeeInput.DecimalPlaces = 2;
+        _deadheadFeeInput.Minimum = 0;
+        _deadheadFeeInput.Maximum = 1000;
+        _deadheadFeeInput.Increment = 0.01m;
+        _deadheadFeeInput.Dock = DockStyle.Bottom;
+        panel.Controls.Add(_deadheadFeeInput);
         panel.Controls.Add(label);
         return panel;
     }
@@ -580,7 +606,7 @@ public sealed class MainForm : Form
         {
             if (_autocompleteLists.TryGetValue(input, out var listBox))
             {
-                if (listBox.Visible && listBox.RectangleToScreen(listBox.ClientRectangle).Contains(Cursor.Position))
+                if (listBox.Visible && (listBox.ContainsFocus || listBox.RectangleToScreen(listBox.ClientRectangle).Contains(Cursor.Position)))
                 {
                     return;
                 }
@@ -613,7 +639,7 @@ public sealed class MainForm : Form
         _autocompleteTokens[input] = cts;
         var token = cts.Token;
 
-        var timer = new System.Windows.Forms.Timer { Interval = 350 };
+        var timer = new System.Windows.Forms.Timer { Interval = 200 };
         timer.Tick += async (_, _) =>
         {
             timer.Stop();
@@ -651,6 +677,7 @@ public sealed class MainForm : Form
             : string.IsNullOrWhiteSpace(_prefs.CustomDeadheadAddress)
                 ? _prefs.YardAddress
                 : _prefs.CustomDeadheadAddress;
+        _deadheadFeeInput.Value = _prefs.DeadheadFee;
         _baseFeeInput.Value = _prefs.BaseFee;
         _rateInput.Value = _prefs.RatePerMile;
         _discountPercentInput.Value = _prefs.DiscountPercent;
@@ -664,6 +691,7 @@ public sealed class MainForm : Form
         ApplyDefaultYardToggle();
 
         _deadheadInput.Leave += (_, _) => SavePreferences();
+        _deadheadFeeInput.ValueChanged += (_, _) => SavePreferences();
         _baseFeeInput.ValueChanged += (_, _) => SavePreferences();
         _rateInput.ValueChanged += (_, _) => SavePreferences();
         _discountPercentInput.ValueChanged += (_, _) => SavePreferences();
@@ -678,6 +706,7 @@ public sealed class MainForm : Form
         {
             _prefs.CustomDeadheadAddress = _deadheadInput.Text.Trim();
         }
+        _prefs.DeadheadFee = _deadheadFeeInput.Value;
         _prefs.BaseFee = _baseFeeInput.Value;
         _prefs.RatePerMile = _rateInput.Value;
         _prefs.DiscountPercent = _discountPercentInput.Value;
@@ -695,6 +724,7 @@ public sealed class MainForm : Form
         _customerNameInput.Text = string.Empty;
         _customerPhonePrimaryInput.Text = string.Empty;
         _customerPhoneSecondaryInput.Text = string.Empty;
+        _deadheadFeeInput.Value = _prefs.DeadheadFee;
         _discountPercentInput.Value = 0;
         _discountAmountInput.Value = 0;
         _discountReasonInput.Text = string.Empty;
@@ -729,6 +759,7 @@ public sealed class MainForm : Form
     {
         _resultBox.Text = "Calculating...";
 
+        var deadheadFee = _deadheadFeeInput.Value;
         var baseFee = _baseFeeInput.Value;
         var rate = _rateInput.Value;
         var discountPercent = Math.Max(0, _discountPercentInput.Value);
@@ -758,7 +789,7 @@ public sealed class MainForm : Form
             var towMi = await _geoClient.RouteMilesAsync(pickup, dropoff, CancellationToken.None);
             var totalMi = deadMi + towMi;
             var mileageCost = rate * (decimal)totalMi;
-            var preDiscount = baseFee + mileageCost;
+            var preDiscount = baseFee + deadheadFee + mileageCost;
             var percentDiscount = preDiscount * (discountPercent / 100m);
             var discountTotal = Math.Min(preDiscount, percentDiscount + discountAmount);
             var totalCost = preDiscount - discountTotal;
@@ -768,6 +799,7 @@ public sealed class MainForm : Form
             summary.AppendLine($"Tow: {towMi:F1} mi");
             summary.AppendLine($"Total miles: {totalMi:F1} mi");
             summary.AppendLine();
+            summary.AppendLine($"Deadhead fee: {FormatMoney(deadheadFee)}");
             summary.AppendLine($"Base fee: {FormatMoney(baseFee)}");
             summary.AppendLine($"Mileage: {FormatMoney(mileageCost)}");
             summary.AppendLine($"Discounts: -{FormatMoney(discountTotal)}");
