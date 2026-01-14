@@ -43,7 +43,6 @@ public sealed class MainForm : Form
 
     private readonly Dictionary<TextBox, ListBox> _autocompleteLists = new();
     private readonly Dictionary<TextBox, CancellationTokenSource> _autocompleteTokens = new();
-    private readonly Dictionary<TextBox, Button> _autocompleteButtons = new();
 
     public MainForm()
     {
@@ -60,17 +59,15 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(16),
-            RowCount = 3,
+            RowCount = 2,
             ColumnCount = 1,
         };
         mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 55));
-        mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 45));
+        mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         Controls.Add(mainPanel);
 
         mainPanel.Controls.Add(BuildHero());
-        mainPanel.Controls.Add(BuildEstimatorSection());
-        mainPanel.Controls.Add(BuildLogSection());
+        mainPanel.Controls.Add(BuildTabs());
 
         LoadPreferencesIntoUi();
         RenderLogs();
@@ -148,7 +145,21 @@ public sealed class MainForm : Form
         return panel;
     }
 
-    private Control BuildEstimatorSection()
+    private Control BuildTabs()
+    {
+        var tabs = new TabControl { Dock = DockStyle.Fill };
+        var estimatorTab = new TabPage("Estimator") { BackColor = Color.FromArgb(241, 245, 249) };
+        var logTab = new TabPage("Quote Log") { BackColor = Color.FromArgb(241, 245, 249) };
+
+        estimatorTab.Controls.Add(BuildEstimatorPage());
+        logTab.Controls.Add(BuildLogSection());
+
+        tabs.TabPages.Add(estimatorTab);
+        tabs.TabPages.Add(logTab);
+        return tabs;
+    }
+
+    private Control BuildEstimatorPage()
     {
         var section = new TableLayoutPanel
         {
@@ -432,24 +443,7 @@ public sealed class MainForm : Form
         var panel = new Panel { Dock = DockStyle.Top, Height = 90 };
         var label = new Label { Text = labelText, AutoSize = true };
         label.Dock = DockStyle.Top;
-
-        var row = new TableLayoutPanel
-        {
-            Dock = DockStyle.Top,
-            ColumnCount = 2,
-            Height = 28
-        };
-        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        input.Dock = DockStyle.Fill;
-        var searchButton = new Button
-        {
-            Text = "Search",
-            AutoSize = true,
-            Margin = new Padding(6, 0, 0, 0)
-        };
-        row.Controls.Add(input, 0, 0);
-        row.Controls.Add(searchButton, 1, 0);
+        input.Dock = DockStyle.Top;
 
         var listBox = new ListBox
         {
@@ -471,10 +465,9 @@ public sealed class MainForm : Form
         };
 
         _autocompleteLists[input] = listBox;
-        _autocompleteButtons[input] = searchButton;
 
         panel.Controls.Add(listBox);
-        panel.Controls.Add(row);
+        panel.Controls.Add(input);
         panel.Controls.Add(label);
         return panel;
     }
@@ -493,23 +486,10 @@ public sealed class MainForm : Form
             };
         }
 
-        if (_autocompleteButtons.TryGetValue(input, out var searchButton))
+        input.TextChanged += (_, _) =>
         {
-            searchButton.Click += (_, _) =>
-            {
-                setPoint(null);
-                StartAutocomplete(input, setPoint);
-            };
-        }
-        input.KeyDown += (_, e) =>
-        {
-            if (e.KeyCode == Keys.Enter)
-            {
-                e.Handled = true;
-                e.SuppressKeyPress = true;
-                setPoint(null);
-                StartAutocomplete(input, setPoint);
-            }
+            setPoint(null);
+            StartAutocomplete(input);
         };
         input.Leave += (_, _) =>
         {
@@ -527,7 +507,7 @@ public sealed class MainForm : Form
         };
     }
 
-    private void StartAutocomplete(TextBox input, Action<GeoPoint?> setPoint)
+    private void StartAutocomplete(TextBox input)
     {
         if (!_autocompleteLists.TryGetValue(input, out var listBox))
         {
@@ -544,7 +524,7 @@ public sealed class MainForm : Form
         _autocompleteTokens[input] = cts;
         var token = cts.Token;
 
-        var timer = new System.Windows.Forms.Timer { Interval = 450 };
+        var timer = new System.Windows.Forms.Timer { Interval = 350 };
         timer.Tick += async (_, _) =>
         {
             timer.Stop();
