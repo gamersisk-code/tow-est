@@ -11,7 +11,7 @@ import threading
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
-from tkinter import StringVar, Tk, messagebox
+from tkinter import Listbox, StringVar, Tk, messagebox
 from tkinter import ttk
 from urllib.parse import urlencode
 from urllib.request import urlopen
@@ -80,6 +80,26 @@ def geocode(address: str) -> dict | None:
     }
 
 
+def fetch_autocomplete(text: str) -> list[str]:
+    if not text.strip():
+        return []
+    params = {
+        "text": text,
+        "apiKey": GEOAPIFY_KEY,
+        "limit": 8,
+    }
+    if COUNTRY_FILTER:
+        params["filter"] = f"countrycode:{COUNTRY_FILTER}"
+    url = "https://api.geoapify.com/v1/geocode/autocomplete?" + urlencode(params)
+    data = fetch_json(url)
+    suggestions = []
+    for feature in data.get("features", []):
+        formatted = feature.get("properties", {}).get("formatted")
+        if formatted:
+            suggestions.append(formatted)
+    return suggestions
+
+
 def route_miles(start: dict, end: dict) -> float:
     params = {
         "waypoints": f"{start['lat']},{start['lon']}|{end['lat']},{end['lon']}",
@@ -121,6 +141,7 @@ class TowEstimatorApp:
         self.latest_quote: Quote | None = None
 
         self.search_query = StringVar()
+        self._autocomplete_jobs: dict[ttk.Entry, str] = {}
 
         self._setup_style()
         self._build_layout()
@@ -132,18 +153,9 @@ class TowEstimatorApp:
         self._apply_theme(style)
 
     def _apply_theme(self, style: ttk.Style) -> None:
-        if self.theme.get() == "dark":
-            colors = {
-                "bg": "#0f172a",
-                "card": "#111827",
-                "text": "#f8fafc",
-                "muted": "#94a3b8",
-                "accent": "#38bdf8",
-                "button": "#0ea5e9",
-                "button_text": "#0f172a",
-            }
-        else:
-            colors = {
+        theme = self.theme.get()
+        theme_map = {
+            "light": {
                 "bg": "#f8fafc",
                 "card": "#ffffff",
                 "text": "#0f172a",
@@ -151,7 +163,36 @@ class TowEstimatorApp:
                 "accent": "#2563eb",
                 "button": "#1d4ed8",
                 "button_text": "#ffffff",
-            }
+            },
+            "dark": {
+                "bg": "#0f172a",
+                "card": "#111827",
+                "text": "#f8fafc",
+                "muted": "#94a3b8",
+                "accent": "#38bdf8",
+                "button": "#0ea5e9",
+                "button_text": "#0f172a",
+            },
+            "sunset": {
+                "bg": "#fff7ed",
+                "card": "#ffedd5",
+                "text": "#431407",
+                "muted": "#9a3412",
+                "accent": "#fb923c",
+                "button": "#ea580c",
+                "button_text": "#fff7ed",
+            },
+            "neon": {
+                "bg": "#0f172a",
+                "card": "#1f2937",
+                "text": "#e0f2fe",
+                "muted": "#94a3b8",
+                "accent": "#a78bfa",
+                "button": "#22d3ee",
+                "button_text": "#0f172a",
+            },
+        }
+        colors = theme_map.get(theme, theme_map["light"])
 
         self.root.configure(background=colors["bg"])
         style.configure("TFrame", background=colors["bg"])
@@ -245,9 +286,9 @@ class TowEstimatorApp:
         self._entry(form, "Customer name", self.customer_name)
         self._entry(form, "Customer phone", self.customer_phone)
         ttk.Label(form, text="Job", style="Accent.TLabel").pack(anchor="w", pady=(10, 0))
-        self._entry(form, "Deadhead start (yard)", self.deadhead_address)
-        self._entry(form, "Pickup address", self.pickup_address)
-        self._entry(form, "Drop-off address", self.dropoff_address)
+        self._entry(form, "Deadhead start (yard)", self.deadhead_address, autocomplete=True)
+        self._entry(form, "Pickup address", self.pickup_address, autocomplete=True)
+        self._entry(form, "Drop-off address", self.dropoff_address, autocomplete=True)
         ttk.Label(form, text="Rates", style="Accent.TLabel").pack(anchor="w", pady=(10, 0))
         self._entry(form, "Base fee", self.base_fee)
         self._entry(form, "Rate per mile", self.rate_per_mile)
@@ -330,20 +371,19 @@ class TowEstimatorApp:
         ttk.Label(card, text="Theme", style="Accent.TLabel").pack(anchor="w")
         theme_row = ttk.Frame(card)
         theme_row.pack(anchor="w", pady=(8, 12))
-        ttk.Radiobutton(
-            theme_row,
-            text="Light",
-            value="light",
-            variable=self.theme,
-            command=self.apply_theme,
-        ).pack(side="left")
-        ttk.Radiobutton(
-            theme_row,
-            text="Dark",
-            value="dark",
-            variable=self.theme,
-            command=self.apply_theme,
-        ).pack(side="left", padx=12)
+        for label, value in [
+            ("Light", "light"),
+            ("Dark", "dark"),
+            ("Sunset", "sunset"),
+            ("Neon", "neon"),
+        ]:
+            ttk.Radiobutton(
+                theme_row,
+                text=label,
+                value=value,
+                variable=self.theme,
+                command=self.apply_theme,
+            ).pack(side="left", padx=6)
 
         ttk.Label(
             card,
@@ -352,12 +392,88 @@ class TowEstimatorApp:
             wraplength=600,
         ).pack(anchor="w")
 
-    def _entry(self, parent: ttk.Frame, label: str, variable: StringVar) -> None:
+    def _entry(
+        self,
+        parent: ttk.Frame,
+        label: str,
+        variable: StringVar,
+        *,
+        autocomplete: bool = False,
+    ) -> None:
         ttk.Label(parent, text=label).pack(anchor="w", pady=(6, 0))
-        ttk.Entry(parent, textvariable=variable).pack(fill="x")
+        field_frame = ttk.Frame(parent)
+        field_frame.pack(fill="x")
+        entry = ttk.Entry(field_frame, textvariable=variable)
+        entry.pack(fill="x")
+        if autocomplete:
+            listbox = Listbox(
+                field_frame,
+                height=5,
+                relief="flat",
+                highlightthickness=1,
+                activestyle="none",
+            )
+            listbox.pack(fill="x", pady=(2, 0))
+            listbox.pack_forget()
+            self._attach_autocomplete(entry, listbox, variable)
 
     def apply_theme(self) -> None:
         self._apply_theme(ttk.Style())
+
+    def _attach_autocomplete(
+        self, entry: ttk.Entry, listbox: Listbox, variable: StringVar
+    ) -> None:
+        def on_key_release(_event: object) -> None:
+            job = self._autocomplete_jobs.get(entry)
+            if job:
+                self.root.after_cancel(job)
+            self._autocomplete_jobs[entry] = self.root.after(
+                250, lambda: self._run_autocomplete(entry, listbox, variable)
+            )
+
+        def on_select(_event: object) -> None:
+            selection = listbox.curselection()
+            if not selection:
+                return
+            value = listbox.get(selection[0])
+            variable.set(value)
+            listbox.pack_forget()
+
+        def hide_list(_event: object) -> None:
+            self.root.after(150, listbox.pack_forget)
+
+        entry.bind("<KeyRelease>", on_key_release)
+        entry.bind("<FocusIn>", on_key_release)
+        entry.bind("<FocusOut>", hide_list)
+        listbox.bind("<<ListboxSelect>>", on_select)
+
+    def _run_autocomplete(
+        self, entry: ttk.Entry, listbox: Listbox, variable: StringVar
+    ) -> None:
+        query = variable.get().strip()
+        if not query:
+            listbox.pack_forget()
+            return
+
+        def worker() -> None:
+            try:
+                suggestions = fetch_autocomplete(query)
+            except Exception:
+                suggestions = []
+            self.root.after(
+                0, lambda: self._show_suggestions(listbox, suggestions)
+            )
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _show_suggestions(self, listbox: Listbox, suggestions: list[str]) -> None:
+        listbox.delete(0, "end")
+        if not suggestions:
+            listbox.pack_forget()
+            return
+        for item in suggestions:
+            listbox.insert("end", item)
+        listbox.pack(fill="x", pady=(2, 0))
 
     def clear_form(self) -> None:
         self.customer_name.set("")
