@@ -688,6 +688,30 @@ class TowEstimatorApp:
     def _draw_print_layout(self, canvas: Canvas, quote: Quote) -> None:
         width = int(canvas.winfo_reqwidth() or 800)
         canvas.delete("all")
+        content_width = width - 120
+
+        def draw_wrapped_text(
+            x: float,
+            y: float,
+            text: str,
+            *,
+            max_width: float,
+            font: tuple[str, int, str] | tuple[str, int],
+            fill: str,
+            anchor: str = "nw",
+        ) -> float:
+            text_id = canvas.create_text(
+                x,
+                y,
+                text=text,
+                font=font,
+                fill=fill,
+                anchor=anchor,
+                width=max_width,
+            )
+            bbox = canvas.bbox(text_id)
+            return bbox[3] if bbox else y
+
         canvas.create_rectangle(0, 0, width, 80, fill="#0f766e", outline="")
         canvas.create_polygon(width - 140, 0, width, 0, width - 80, 80, width - 220, 80, fill="#e5e7eb", outline="")
         canvas.create_polygon(width - 110, 0, width, 0, width - 50, 80, width - 160, 80, fill="#111827", outline="")
@@ -716,8 +740,17 @@ class TowEstimatorApp:
             "Phone: (000) 000-0000",
             "Email: info@example.com",
         ]
-        for idx, line in enumerate(company_lines):
-            canvas.create_text(left_box[0] + 20, left_box[1] + 24 + idx * 26, text=line, font=("Segoe UI", 11), fill="#111827", anchor="w")
+        left_y = left_box[1] + 18
+        left_max_width = left_box[2] - left_box[0] - 40
+        for line in company_lines:
+            left_y = draw_wrapped_text(
+                left_box[0] + 20,
+                left_y,
+                line,
+                max_width=left_max_width,
+                font=("Segoe UI", 11),
+                fill="#111827",
+            ) + 6
 
         customer_lines = [
             quote.customer_name or "Customer",
@@ -725,8 +758,17 @@ class TowEstimatorApp:
             quote.dropoff_address,
             f"Phone: {quote.customer_phone or 'N/A'}",
         ]
-        for idx, line in enumerate(customer_lines):
-            canvas.create_text(right_box[0] + 20, right_box[1] + 24 + idx * 26, text=line, font=("Segoe UI", 11), fill="#111827", anchor="w")
+        right_y = right_box[1] + 18
+        right_max_width = right_box[2] - right_box[0] - 40
+        for line in customer_lines:
+            right_y = draw_wrapped_text(
+                right_box[0] + 20,
+                right_y,
+                line,
+                max_width=right_max_width,
+                font=("Segoe UI", 11),
+                fill="#111827",
+            ) + 6
 
         table_top = 420
         canvas.create_rectangle(60, table_top, width - 60, table_top + 32, fill="#0f766e", outline="#0f766e")
@@ -747,12 +789,35 @@ class TowEstimatorApp:
             line_items.append(("1", label, -quote.discount_amount))
 
         row_y = table_top + 44
+        desc_max_width = width - 60 - 220
         for qty, desc, amount in line_items:
-            canvas.create_text(90, row_y, text=qty, font=("Segoe UI", 10), fill="#111827", anchor="w")
-            canvas.create_text(200, row_y, text=desc, font=("Segoe UI", 10), fill="#111827", anchor="w")
-            canvas.create_text(width - 200, row_y, text=format_currency(amount), font=("Segoe UI", 10), fill="#111827", anchor="w")
-            canvas.create_text(width - 100, row_y, text=format_currency(amount), font=("Segoe UI", 10), fill="#111827", anchor="w")
-            row_y += 26
+            canvas.create_text(90, row_y, text=qty, font=("Segoe UI", 10), fill="#111827", anchor="nw")
+            desc_bottom = draw_wrapped_text(
+                200,
+                row_y,
+                desc,
+                max_width=desc_max_width,
+                font=("Segoe UI", 10),
+                fill="#111827",
+            )
+            canvas.create_text(
+                width - 200,
+                row_y,
+                text=format_currency(amount),
+                font=("Segoe UI", 10),
+                fill="#111827",
+                anchor="nw",
+            )
+            canvas.create_text(
+                width - 100,
+                row_y,
+                text=format_currency(amount),
+                font=("Segoe UI", 10),
+                fill="#111827",
+                anchor="nw",
+            )
+            row_height = max(24, desc_bottom - row_y + 6)
+            row_y += row_height
 
         totals_y = row_y + 20
         canvas.create_text(width - 220, totals_y, text="Total", font=("Segoe UI", 12, "bold"), fill="#0f766e", anchor="w")
@@ -780,7 +845,7 @@ class TowEstimatorApp:
             ),
             font=("Segoe UI", 9),
             fill="#374151",
-            width=width - 120,
+            width=content_width,
             anchor="nw",
         )
 
