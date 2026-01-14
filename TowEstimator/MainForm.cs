@@ -43,6 +43,7 @@ public sealed class MainForm : Form
 
     private readonly Dictionary<TextBox, ListBox> _autocompleteLists = new();
     private readonly Dictionary<TextBox, CancellationTokenSource> _autocompleteTokens = new();
+    private readonly Dictionary<TextBox, Button> _autocompleteButtons = new();
 
     public MainForm()
     {
@@ -428,10 +429,27 @@ public sealed class MainForm : Form
 
     private Panel CreateAutocompleteField(string labelText, TextBox input)
     {
-        var panel = new Panel { Dock = DockStyle.Top, Height = 78 };
+        var panel = new Panel { Dock = DockStyle.Top, Height = 90 };
         var label = new Label { Text = labelText, AutoSize = true };
         label.Dock = DockStyle.Top;
-        input.Dock = DockStyle.Top;
+
+        var row = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            ColumnCount = 2,
+            Height = 28
+        };
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        input.Dock = DockStyle.Fill;
+        var searchButton = new Button
+        {
+            Text = "Search",
+            AutoSize = true,
+            Margin = new Padding(6, 0, 0, 0)
+        };
+        row.Controls.Add(input, 0, 0);
+        row.Controls.Add(searchButton, 1, 0);
 
         var listBox = new ListBox
         {
@@ -453,9 +471,10 @@ public sealed class MainForm : Form
         };
 
         _autocompleteLists[input] = listBox;
+        _autocompleteButtons[input] = searchButton;
 
         panel.Controls.Add(listBox);
-        panel.Controls.Add(input);
+        panel.Controls.Add(row);
         panel.Controls.Add(label);
         return panel;
     }
@@ -474,10 +493,23 @@ public sealed class MainForm : Form
             };
         }
 
-        input.TextChanged += (_, _) =>
+        if (_autocompleteButtons.TryGetValue(input, out var searchButton))
         {
-            setPoint(null);
-            StartAutocomplete(input, setPoint);
+            searchButton.Click += (_, _) =>
+            {
+                setPoint(null);
+                StartAutocomplete(input, setPoint);
+            };
+        }
+        input.KeyDown += (_, e) =>
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                setPoint(null);
+                StartAutocomplete(input, setPoint);
+            }
         };
         input.Leave += (_, _) =>
         {
@@ -512,7 +544,7 @@ public sealed class MainForm : Form
         _autocompleteTokens[input] = cts;
         var token = cts.Token;
 
-        var timer = new System.Windows.Forms.Timer { Interval = 400 };
+        var timer = new System.Windows.Forms.Timer { Interval = 450 };
         timer.Tick += async (_, _) =>
         {
             timer.Stop();
