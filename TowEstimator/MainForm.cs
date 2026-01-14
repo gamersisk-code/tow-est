@@ -23,6 +23,7 @@ public sealed class MainForm : Form
     private readonly TextBox _deadheadInput = new();
     private readonly TextBox _pickupInput = new();
     private readonly TextBox _dropoffInput = new();
+    private readonly CheckBox _useDefaultYardToggle = new();
     private readonly NumericUpDown _baseFeeInput = new();
     private readonly NumericUpDown _rateInput = new();
     private readonly NumericUpDown _discountPercentInput = new();
@@ -199,22 +200,39 @@ public sealed class MainForm : Form
         layout.Controls.Add(CreateAutocompleteField("Deadhead start (your yard/base)", _deadheadInput), 0, 1);
         layout.SetColumnSpan(layout.Controls[^1], 2);
 
-        layout.Controls.Add(CreateAutocompleteField("Pickup address", _pickupInput), 0, 2);
+        var defaultTogglePanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight
+        };
+        _useDefaultYardToggle.Text = "Use default yard for deadhead";
+        _useDefaultYardToggle.AutoSize = true;
+        _useDefaultYardToggle.CheckedChanged += (_, _) =>
+        {
+            ApplyDefaultYardToggle();
+            SavePreferences();
+        };
+        defaultTogglePanel.Controls.Add(_useDefaultYardToggle);
+        layout.Controls.Add(defaultTogglePanel, 0, 2);
+        layout.SetColumnSpan(defaultTogglePanel, 2);
+
+        layout.Controls.Add(CreateAutocompleteField("Pickup address", _pickupInput), 0, 3);
         layout.SetColumnSpan(layout.Controls[^1], 2);
 
-        layout.Controls.Add(CreateAutocompleteField("Drop-off address", _dropoffInput), 0, 3);
+        layout.Controls.Add(CreateAutocompleteField("Drop-off address", _dropoffInput), 0, 4);
         layout.SetColumnSpan(layout.Controls[^1], 2);
 
-        AddSectionLabel(layout, "Pricing controls", 4);
+        AddSectionLabel(layout, "Pricing controls", 5);
 
-        layout.Controls.Add(CreateNumericField("Hook/Base Fee ($)", _baseFeeInput, 0, 1000, 1, 0), 0, 5);
-        layout.Controls.Add(CreateNumericField("Rate per Mile ($)", _rateInput, 0, 1000, 0.01m, 2), 1, 5);
+        layout.Controls.Add(CreateNumericField("Hook/Base Fee ($)", _baseFeeInput, 0, 1000, 1, 0), 0, 6);
+        layout.Controls.Add(CreateNumericField("Rate per Mile ($)", _rateInput, 0, 1000, 0.01m, 2), 1, 6);
 
-        layout.Controls.Add(CreateNumericField("Discount %", _discountPercentInput, 0, 100, 0.1m, 1), 0, 6);
-        layout.Controls.Add(CreateNumericField("Discount $", _discountAmountInput, 0, 1000, 0.01m, 2), 1, 6);
+        layout.Controls.Add(CreateNumericField("Discount %", _discountPercentInput, 0, 100, 0.1m, 1), 0, 7);
+        layout.Controls.Add(CreateNumericField("Discount $", _discountAmountInput, 0, 1000, 0.01m, 2), 1, 7);
 
         var discountReasonPanel = CreateTextField("Discount reason", _discountReasonInput);
-        layout.Controls.Add(discountReasonPanel, 0, 7);
+        layout.Controls.Add(discountReasonPanel, 0, 8);
         layout.SetColumnSpan(discountReasonPanel, 2);
 
         var buttonPanel = new FlowLayoutPanel
@@ -248,7 +266,7 @@ public sealed class MainForm : Form
         buttonPanel.Controls.Add(calcButton);
         buttonPanel.Controls.Add(printButton);
 
-        layout.Controls.Add(buttonPanel, 0, 8);
+        layout.Controls.Add(buttonPanel, 0, 9);
         layout.SetColumnSpan(buttonPanel, 2);
 
         AttachAutocomplete(_deadheadInput, point => _deadheadPoint = point);
@@ -461,7 +479,6 @@ public sealed class MainForm : Form
             setPoint(null);
             StartAutocomplete(input, setPoint);
         };
-        input.Enter += (_, _) => StartAutocomplete(input, setPoint);
         input.Leave += (_, _) =>
         {
             if (_autocompleteLists.TryGetValue(input, out var listBox))
@@ -495,12 +512,17 @@ public sealed class MainForm : Form
         _autocompleteTokens[input] = cts;
         var token = cts.Token;
 
-        var timer = new System.Windows.Forms.Timer { Interval = 240 };
+        var timer = new System.Windows.Forms.Timer { Interval = 400 };
         timer.Tick += async (_, _) =>
         {
             timer.Stop();
             try
             {
+                if (input.Text.Trim().Length < 3)
+                {
+                    listBox.Visible = false;
+                    return;
+                }
                 var results = await _geoClient.AutocompleteAsync(input.Text, token);
                 if (token.IsCancellationRequested)
                 {
@@ -522,13 +544,19 @@ public sealed class MainForm : Form
 
     private void LoadPreferencesIntoUi()
     {
-        _deadheadInput.Text = _prefs.YardAddress;
+        _useDefaultYardToggle.Checked = _prefs.UseDefaultYard;
+        _deadheadInput.Text = _prefs.UseDefaultYard
+            ? _prefs.YardAddress
+            : string.IsNullOrWhiteSpace(_prefs.CustomDeadheadAddress)
+                ? _prefs.YardAddress
+                : _prefs.CustomDeadheadAddress;
         _baseFeeInput.Value = _prefs.BaseFee;
         _rateInput.Value = _prefs.RatePerMile;
         _discountPercentInput.Value = _prefs.DiscountPercent;
         _discountAmountInput.Value = _prefs.DiscountAmount;
         _discountReasonInput.Text = _prefs.DiscountReason;
         _heroYard.Text = _prefs.YardAddress;
+        ApplyDefaultYardToggle();
 
         _deadheadInput.Leave += (_, _) => SavePreferences();
         _baseFeeInput.ValueChanged += (_, _) => SavePreferences();
@@ -540,7 +568,11 @@ public sealed class MainForm : Form
 
     private void SavePreferences()
     {
-        _prefs.YardAddress = _deadheadInput.Text.Trim();
+        _prefs.UseDefaultYard = _useDefaultYardToggle.Checked;
+        if (_deadheadInput.Enabled)
+        {
+            _prefs.CustomDeadheadAddress = _deadheadInput.Text.Trim();
+        }
         _prefs.BaseFee = _baseFeeInput.Value;
         _prefs.RatePerMile = _rateInput.Value;
         _prefs.DiscountPercent = _discountPercentInput.Value;
@@ -548,6 +580,22 @@ public sealed class MainForm : Form
         _prefs.DiscountReason = _discountReasonInput.Text.Trim();
         _storage.SavePreferences(_prefs);
         _heroYard.Text = _prefs.YardAddress;
+    }
+
+    private void ApplyDefaultYardToggle()
+    {
+        var useDefault = _useDefaultYardToggle.Checked;
+        _deadheadInput.Enabled = !useDefault;
+        if (useDefault)
+        {
+            _deadheadInput.Text = _prefs.YardAddress;
+        }
+        else if (string.IsNullOrWhiteSpace(_deadheadInput.Text))
+        {
+            _deadheadInput.Text = string.IsNullOrWhiteSpace(_prefs.CustomDeadheadAddress)
+                ? _prefs.YardAddress
+                : _prefs.CustomDeadheadAddress;
+        }
     }
 
     private async Task RunEstimateAsync()

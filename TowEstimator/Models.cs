@@ -5,6 +5,8 @@ namespace TowEstimator;
 public sealed class EstimatorPreferences
 {
     public string YardAddress { get; set; } = "184 Nicholson Rd, Lincolnton, NC 28092";
+    public string CustomDeadheadAddress { get; set; } = string.Empty;
+    public bool UseDefaultYard { get; set; } = true;
     public decimal BaseFee { get; set; } = 30m;
     public decimal RatePerMile { get; set; } = 3.50m;
     public decimal DiscountPercent { get; set; }
