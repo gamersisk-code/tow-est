@@ -11,7 +11,7 @@ import threading
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
-from tkinter import Listbox, StringVar, Text, Tk, Toplevel, messagebox
+from tkinter import Canvas, Listbox, StringVar, Text, Tk, Toplevel, messagebox
 from tkinter import ttk
 from urllib.parse import urlencode
 from urllib.request import urlopen
@@ -362,6 +362,9 @@ class TowEstimatorApp:
         ttk.Button(actions, text="Save Quote", command=self.save_quote).pack(
             side="left", padx=10
         )
+        ttk.Button(actions, text="Print Quote", command=self.print_quote).pack(
+            side="left", padx=10
+        )
         ttk.Button(actions, text="Clear", command=self.clear_form).pack(side="left")
 
         results = ttk.Frame(right, style="Card.TFrame", padding=18)
@@ -658,6 +661,136 @@ class TowEstimatorApp:
             self._load_quotes()
         except OSError as exc:
             messagebox.showerror("Save error", str(exc))
+
+    def print_quote(self) -> None:
+        if not self.latest_quote:
+            messagebox.showwarning("No estimate", "Run an estimate before printing.")
+            return
+        self._show_print_preview(self.latest_quote)
+
+    def _show_print_preview(self, quote: Quote) -> None:
+        preview = Toplevel(self.root)
+        preview.title("Quote Print Preview")
+        preview.geometry("840x1060")
+        preview.minsize(760, 980)
+        canvas = Canvas(preview, background="white", highlightthickness=0)
+        canvas.pack(fill="both", expand=True, padx=16, pady=16)
+        self._draw_print_layout(canvas, quote)
+
+        button_row = ttk.Frame(preview, padding=(16, 8))
+        button_row.pack(fill="x")
+        ttk.Button(
+            button_row,
+            text="Print to file",
+            command=lambda: self._print_canvas(canvas),
+        ).pack(side="right")
+
+    def _draw_print_layout(self, canvas: Canvas, quote: Quote) -> None:
+        width = int(canvas.winfo_reqwidth() or 800)
+        canvas.delete("all")
+        canvas.create_rectangle(0, 0, width, 80, fill="#0f766e", outline="")
+        canvas.create_polygon(width - 140, 0, width, 0, width - 80, 80, width - 220, 80, fill="#e5e7eb", outline="")
+        canvas.create_polygon(width - 110, 0, width, 0, width - 50, 80, width - 160, 80, fill="#111827", outline="")
+
+        canvas.create_text(50, 140, text="Quote", font=("Segoe UI", 42, "bold"), fill="#0f766e", anchor="w")
+
+        meta_x = width - 260
+        canvas.create_text(meta_x, 120, text="Date:", font=("Segoe UI", 11, "bold"), fill="#0f766e", anchor="e")
+        canvas.create_text(meta_x + 10, 120, text=quote.created_at, font=("Segoe UI", 11), fill="#111827", anchor="w")
+        canvas.create_text(meta_x, 150, text="Invoice:", font=("Segoe UI", 11, "bold"), fill="#0f766e", anchor="e")
+        canvas.create_text(meta_x + 10, 150, text=f"EST-{quote.created_at.replace(' ', '')}", font=("Segoe UI", 11), fill="#111827", anchor="w")
+        canvas.create_text(meta_x, 180, text="Expiration Date:", font=("Segoe UI", 11, "bold"), fill="#0f766e", anchor="e")
+        canvas.create_text(meta_x + 10, 180, text="30 days", font=("Segoe UI", 11), fill="#111827", anchor="w")
+
+        left_box = (60, 230, width / 2 - 20, 380)
+        right_box = (width / 2 + 20, 230, width - 60, 380)
+        canvas.create_rectangle(*left_box, outline="#e5e7eb", width=1)
+        canvas.create_rectangle(*right_box, outline="#e5e7eb", width=1)
+        canvas.create_line(left_box[0] + 6, left_box[1], left_box[0] + 6, left_box[3], fill="#0f766e", width=4)
+        canvas.create_line(right_box[0] + 6, right_box[1], right_box[0] + 6, right_box[3], fill="#0f766e", width=4)
+
+        company_lines = [
+            "Southern Pride Towing",
+            "184 Nicholson Rd",
+            "Lincolnton, NC 28092",
+            "Phone: (000) 000-0000",
+            "Email: info@example.com",
+        ]
+        for idx, line in enumerate(company_lines):
+            canvas.create_text(left_box[0] + 20, left_box[1] + 24 + idx * 26, text=line, font=("Segoe UI", 11), fill="#111827", anchor="w")
+
+        customer_lines = [
+            quote.customer_name or "Customer",
+            quote.pickup_address,
+            quote.dropoff_address,
+            f"Phone: {quote.customer_phone or 'N/A'}",
+        ]
+        for idx, line in enumerate(customer_lines):
+            canvas.create_text(right_box[0] + 20, right_box[1] + 24 + idx * 26, text=line, font=("Segoe UI", 11), fill="#111827", anchor="w")
+
+        table_top = 420
+        canvas.create_rectangle(60, table_top, width - 60, table_top + 32, fill="#0f766e", outline="#0f766e")
+        canvas.create_text(90, table_top + 16, text="Qty", font=("Segoe UI", 11, "bold"), fill="white", anchor="w")
+        canvas.create_text(200, table_top + 16, text="Description", font=("Segoe UI", 11, "bold"), fill="white", anchor="w")
+        canvas.create_text(width - 200, table_top + 16, text="Unit Price", font=("Segoe UI", 11, "bold"), fill="white", anchor="w")
+        canvas.create_text(width - 100, table_top + 16, text="Line Total", font=("Segoe UI", 11, "bold"), fill="white", anchor="w")
+
+        line_items = [
+            ("1", "Base fee", quote.base_fee),
+            ("1", f"Mileage ({quote.total_miles:.1f} mi @ {format_currency(quote.rate_per_mile)}/mi)", quote.total_miles * quote.rate_per_mile),
+        ]
+        if quote.custom_charge_amount:
+            label = quote.custom_charge_label or "Custom charge"
+            line_items.append(("1", label, quote.custom_charge_amount))
+        if quote.discount_amount:
+            label = quote.discount_label or "Discount"
+            line_items.append(("1", label, -quote.discount_amount))
+
+        row_y = table_top + 44
+        for qty, desc, amount in line_items:
+            canvas.create_text(90, row_y, text=qty, font=("Segoe UI", 10), fill="#111827", anchor="w")
+            canvas.create_text(200, row_y, text=desc, font=("Segoe UI", 10), fill="#111827", anchor="w")
+            canvas.create_text(width - 200, row_y, text=format_currency(amount), font=("Segoe UI", 10), fill="#111827", anchor="w")
+            canvas.create_text(width - 100, row_y, text=format_currency(amount), font=("Segoe UI", 10), fill="#111827", anchor="w")
+            row_y += 26
+
+        totals_y = row_y + 20
+        canvas.create_text(width - 220, totals_y, text="Total", font=("Segoe UI", 12, "bold"), fill="#0f766e", anchor="w")
+        canvas.create_text(width - 100, totals_y, text=format_currency(quote.estimated_total), font=("Segoe UI", 12, "bold"), fill="#0f766e", anchor="w")
+
+        disclaimer_y = totals_y + 60
+        canvas.create_text(
+            60,
+            disclaimer_y,
+            text=(
+                "Disclaimer & Limitation of Liability:\n"
+                "This quote is an estimate only and is based on the information provided at the time of"
+                " request. Final charges may vary due to actual conditions at the scene, including but"
+                " not limited to vehicle condition, accessibility, distance, required equipment, wait"
+                " time, after-hours service, or additional labor.\n\n"
+                "The customer affirms they are the vehicle owner or are authorized to request towing"
+                " services. The towing company is not responsible for damage caused by pre-existing"
+                " conditions, mechanical failures, low ground clearance, aftermarket modifications, or"
+                " hidden damage not visible prior to service.\n\n"
+                "The towing company shall not be held liable for damage resulting from conditions beyond"
+                " its control, including but not limited to weather, road conditions, locked or inoperable"
+                " vehicles, seized components, or improper hookup points. Liability, if any, is limited"
+                " to direct damages caused by gross negligence, and shall not exceed the cost of the"
+                " service provided."
+            ),
+            font=("Segoe UI", 9),
+            fill="#374151",
+            width=width - 120,
+            anchor="nw",
+        )
+
+    def _print_canvas(self, canvas: Canvas) -> None:
+        file_path = app_directory() / "tow_estimator_quote.ps"
+        canvas.postscript(file=str(file_path), colormode="color")
+        messagebox.showinfo(
+            "Print file created",
+            f"Saved print file to {file_path}. Open it to print.",
+        )
 
     def _load_quotes(self) -> None:
         self.tree.delete(*self.tree.get_children())
