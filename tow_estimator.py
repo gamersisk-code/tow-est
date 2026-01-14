@@ -29,6 +29,33 @@ def app_directory() -> Path:
 
 
 LOG_PATH = app_directory() / "tow_estimator_logs.jsonl"
+SETTINGS_PATH = app_directory() / "tow_estimator_settings.json"
+
+
+@dataclass
+class AppSettings:
+    theme: str = "light"
+    deadhead_address: str = "184 Nicholson Rd, Lincolnton, NC 28092"
+    base_fee: str = "30"
+    rate_per_mile: str = "3.50"
+
+    @classmethod
+    def load(cls) -> "AppSettings":
+        if not SETTINGS_PATH.exists():
+            return cls()
+        try:
+            data = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return cls()
+        return cls(
+            theme=data.get("theme", "light"),
+            deadhead_address=data.get("deadhead_address", cls.deadhead_address),
+            base_fee=data.get("base_fee", cls.base_fee),
+            rate_per_mile=data.get("rate_per_mile", cls.rate_per_mile),
+        )
+
+    def save(self) -> None:
+        SETTINGS_PATH.write_text(json.dumps(asdict(self)), encoding="utf-8")
 
 
 @dataclass
@@ -125,16 +152,17 @@ class TowEstimatorApp:
         self.root.geometry("980x640")
         self.root.minsize(920, 600)
 
-        self.theme = StringVar(value="light")
+        self.settings = AppSettings.load()
+        self.theme = StringVar(value=self.settings.theme)
         self.status_text = StringVar(value="Ready.")
 
         self.customer_name = StringVar()
         self.customer_phone = StringVar()
-        self.deadhead_address = StringVar(value="184 Nicholson Rd, Lincolnton, NC 28092")
+        self.deadhead_address = StringVar(value=self.settings.deadhead_address)
         self.pickup_address = StringVar()
         self.dropoff_address = StringVar()
-        self.base_fee = StringVar(value="30")
-        self.rate_per_mile = StringVar(value="3.50")
+        self.base_fee = StringVar(value=self.settings.base_fee)
+        self.rate_per_mile = StringVar(value=self.settings.rate_per_mile)
         self.notes = StringVar()
 
         self.result_summary = StringVar(value="Enter addresses and click Estimate.")
@@ -145,6 +173,7 @@ class TowEstimatorApp:
 
         self._setup_style()
         self._build_layout()
+        self._bind_setting_traces()
         self._load_quotes()
 
     def _setup_style(self) -> None:
@@ -197,7 +226,20 @@ class TowEstimatorApp:
         self.root.configure(background=colors["bg"])
         style.configure("TFrame", background=colors["bg"])
         style.configure("Card.TFrame", background=colors["card"], relief="flat")
+        style.configure("Header.TFrame", background=colors["accent"])
         style.configure("TLabel", background=colors["bg"], foreground=colors["text"])
+        style.configure(
+            "Header.TLabel",
+            background=colors["accent"],
+            foreground=colors["button_text"],
+            font=("Segoe UI", 18, "bold"),
+        )
+        style.configure(
+            "Header.Subtitle.TLabel",
+            background=colors["accent"],
+            foreground=colors["button_text"],
+            font=("Segoe UI", 11),
+        )
         style.configure("Muted.TLabel", foreground=colors["muted"])
         style.configure(
             "Heading.TLabel",
@@ -230,6 +272,8 @@ class TowEstimatorApp:
             fieldbackground=colors["card"],
             foreground=colors["text"],
             borderwidth=0,
+            rowheight=28,
+            font=("Segoe UI", 10),
         )
         style.configure(
             "Treeview.Heading",
@@ -237,17 +281,18 @@ class TowEstimatorApp:
             background=colors["bg"],
             foreground=colors["text"],
         )
+        self._update_tree_tags(colors)
 
     def _build_layout(self) -> None:
-        header = ttk.Frame(self.root, padding=(24, 18))
+        header = ttk.Frame(self.root, padding=(24, 18), style="Header.TFrame")
         header.pack(fill="x")
-        ttk.Label(header, text="Southern Pride Towing", style="Heading.TLabel").pack(
+        ttk.Label(header, text="Southern Pride Towing", style="Header.TLabel").pack(
             anchor="w"
         )
         ttk.Label(
             header,
             text="Flashy estimator + portable quote logs",
-            style="Muted.TLabel",
+            style="Header.Subtitle.TLabel",
         ).pack(anchor="w")
 
         notebook = ttk.Notebook(self.root)
@@ -359,6 +404,7 @@ class TowEstimatorApp:
             self.tree.column(key, width=width, anchor="w")
         self.tree.pack(fill="both", expand=True)
         self.tree.bind("<<TreeviewSelect>>", self._show_selected_quote)
+        self._update_tree_tags(None)
 
         self.details = ttk.Label(
             self.quotes_tab, text="Select a quote to see details.", wraplength=900
@@ -419,6 +465,38 @@ class TowEstimatorApp:
 
     def apply_theme(self) -> None:
         self._apply_theme(ttk.Style())
+        self._save_settings()
+
+    def _update_tree_tags(self, colors: dict | None) -> None:
+        if not getattr(self, "tree", None):
+            return
+        if colors and colors["bg"] == "#0f172a":
+            odd = "#1e293b"
+            even = "#0f172a"
+        elif colors and colors["bg"] == "#fff7ed":
+            odd = "#fed7aa"
+            even = "#ffedd5"
+        else:
+            odd = "#e2e8f0"
+            even = "#f8fafc"
+        self.tree.tag_configure("odd", background=odd)
+        self.tree.tag_configure("even", background=even)
+
+    def _bind_setting_traces(self) -> None:
+        for variable in [self.deadhead_address, self.base_fee, self.rate_per_mile]:
+            variable.trace_add("write", lambda *_: self._save_settings())
+
+    def _save_settings(self) -> None:
+        self.settings = AppSettings(
+            theme=self.theme.get(),
+            deadhead_address=self.deadhead_address.get(),
+            base_fee=self.base_fee.get(),
+            rate_per_mile=self.rate_per_mile.get(),
+        )
+        try:
+            self.settings.save()
+        except OSError:
+            self.status_text.set("Could not save settings.")
 
     def _attach_autocomplete(
         self, entry: ttk.Entry, listbox: Listbox, variable: StringVar
@@ -566,7 +644,8 @@ class TowEstimatorApp:
                     self._quotes.append(payload)
                 except json.JSONDecodeError:
                     continue
-        for quote in self._quotes:
+        for index, quote in enumerate(self._quotes):
+            tag = "even" if index % 2 == 0 else "odd"
             self.tree.insert(
                 "",
                 "end",
@@ -578,6 +657,7 @@ class TowEstimatorApp:
                     quote.get("dropoff_address"),
                     format_currency(quote.get("estimated_total", 0)),
                 ),
+                tags=(tag,),
             )
 
     def filter_quotes(self) -> None:
@@ -599,7 +679,8 @@ class TowEstimatorApp:
             if query in haystack:
                 filtered.append(quote)
         self.tree.delete(*self.tree.get_children())
-        for quote in filtered:
+        for index, quote in enumerate(filtered):
+            tag = "even" if index % 2 == 0 else "odd"
             self.tree.insert(
                 "",
                 "end",
@@ -611,6 +692,7 @@ class TowEstimatorApp:
                     quote.get("dropoff_address"),
                     format_currency(quote.get("estimated_total", 0)),
                 ),
+                tags=(tag,),
             )
         self.status_text.set(f"Filtered to {len(filtered)} quotes.")
 
