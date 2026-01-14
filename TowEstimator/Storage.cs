@@ -13,9 +13,7 @@ public sealed class Storage
 
     public Storage()
     {
-        var root = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SouthernPrideTowing");
+        var root = Path.Combine(AppContext.BaseDirectory, "Data");
         Directory.CreateDirectory(root);
         _prefsPath = Path.Combine(root, "prefs.json");
         _logsPath = Path.Combine(root, "logs.json");
